@@ -88,9 +88,6 @@ Modular Avatarを利用できる部分についてはModular Avatarの非破壊�
 
 </details>
 
-
-
-
 ---
 
 ## 4. Gesture Managerで動かして確認しよう！
@@ -98,7 +95,10 @@ Modular Avatarを利用できる部分についてはModular Avatarの非破壊�
 - Gesture Managerでアバターを再生し、Expression Menuに追加されたRadial Puppetを動かしてみます。
 - 選択したオブジェクトがRadial Puppetに合わせて拡大縮小されれば完成です！
 
-> **動画:** Gesture ManagerでRadial Puppetを操作して、オブジェクトが拡大縮小する様子
+
+![AI開始時のログ](image\milfy_hair_scale.gif "サンプル")
+
+[AIの実装レポート](ai-result.md)
 
 ---
 
