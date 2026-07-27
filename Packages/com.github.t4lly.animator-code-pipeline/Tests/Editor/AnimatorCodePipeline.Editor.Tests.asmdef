@@ -1,0 +1,27 @@
+{
+  "name": "AnimatorCodePipeline.Editor.Tests",
+  "rootNamespace": "AnimatorCodePipeline.Tests",
+  "references": [
+    "AnimatorCodePipeline.Editor",
+    "AnimatorCodePipeline.Runtime",
+    "nadena.dev.ndmf",
+    "nadena.dev.modular-avatar.core"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "VRCSDKBase.dll",
+    "VRCSDK3A.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "folders": [
+    {
+      "name": "Repository",
+      "path": "."
+    }//,
+    //{
+    //  "name": "Package",
+    //  "path": "Packages/com.github.t4lly.animator-code-pipeline"
+    //},
+    //{
+    //  "name": "Skill",
+    //  "path": "skills/animator-code-pipeline"
+    //}
+  ],
+  "settings": {
+    "files.exclude": {
+      "Assets": true,
+      "Library": true,
+      "Logs": true,
+      "Temp": true,
+      "obj": true,
+      "ProjectSettings": true,
+      "UserSettings": true,
+
+      "Packages/com.vrchat.avatars": true,
+      "Packages/com.vrchat.base": true,
+      "Packages/dev.hai-vr.animator-as-code.v1": true,
+      "Packages/dev.hai-vr.animator-as-code.v1.modular-avatar": true,
+      "Packages/dev.hai-vr.animator-as-code.v1.vrchat": true,
+      "Packages/jp.lilxyzw.liltoon": true,
+      "Packages/nadena.dev.modular-avatar": true,
+      "Packages/nadena.dev.ndmf": true,
+      "Packages/vrchat.blackstartx.gesture-manager": true,
+
+      "Packages/*.json": true,
+
+      "*.csproj": true,
+      "*.sln": true
+
+      //"Packages": true,
+      //"skills": true
+    }
+  }
+}

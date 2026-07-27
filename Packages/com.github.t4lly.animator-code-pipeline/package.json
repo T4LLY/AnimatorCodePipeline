@@ -1,0 +1,18 @@
+{
+  "name": "com.github.t4lly.animator-code-pipeline",
+  "displayName": "Animator Code Pipeline",
+  "version": "0.1.2",
+  "unity": "2022.3",
+  "description": "A thin NDMF pipeline that builds explicitly selected Animator As Code modules and merges their generated controllers through Modular Avatar.",
+  "license": "MIT",
+  "author": {
+    "name": "Animator Code Pipeline contributors"
+  },
+  "vpmDependencies": {
+    "com.vrchat.avatars": ">=3.5.2 <999.0.0-a",
+    "nadena.dev.ndmf": ">=1.6.0 <2.0.0-a",
+    "nadena.dev.modular-avatar": ">=1.9.9 <2.0.0-a",
+    "dev.hai-vr.animator-as-code.v1": ">=1.2.0 <2.0.0-a",
+    "dev.hai-vr.animator-as-code.v1.modular-avatar": ">=1.1.1 <2.0.0-a"
+  }
+}

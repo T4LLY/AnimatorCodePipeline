@@ -1,0 +1,29 @@
+# ------------------------------------------------------------
+# Ignore everything by default
+# ------------------------------------------------------------
+/*
+
+# ------------------------------------------------------------
+# Repository metadata/docs
+# ------------------------------------------------------------
+!/.gitignore
+!/README.md
+!/LICENSE
+!/.github/
+!/.github/**
+!/AnimatorCodePipeline.code-workspace
+!/package-json-samples-snippet.json
+
+# ------------------------------------------------------------
+# AnimatorCodePipeline AI skill
+# ------------------------------------------------------------
+!/Packages/
+/Packages/*
+!/Packages/com.github.t4lly.animator-code-pipeline/
+!/Packages/com.github.t4lly.animator-code-pipeline/**
+
+# ------------------------------------------------------------
+# AnimatorCodePipeline AI skill
+# ------------------------------------------------------------
+!/skills/
+!/skills/**

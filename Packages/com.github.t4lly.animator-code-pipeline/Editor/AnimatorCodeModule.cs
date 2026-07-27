@@ -1,0 +1,35 @@
+using System;
+using UnityEngine;
+
+namespace AnimatorCodePipeline
+{
+    /// <summary>
+    /// Base type for project-owned Animator As Code modules.
+    /// Modules are selected explicitly through AnimatorCodeModuleSet and instantiated once per avatar build.
+    /// </summary>
+    public abstract class AnimatorCodeModule
+    {
+        /// <summary>A stable identifier used for deterministic ordering and duplicate detection.</summary>
+        public abstract string Id { get; }
+
+        /// <summary>Lower values build first. Ties are resolved by Id and then full type name.</summary>
+        public virtual int Order => 0;
+
+        /// <summary>
+        /// Return false when this module is not intended for the current avatar/settings.
+        /// Keep this side-effect free: do not create controllers, clips, GameObjects, or MA components here.
+        /// </summary>
+        public virtual bool IsApplicable(GameObject avatarRoot, AnimatorCodePipelineSettings settings) => true;
+
+        /// <summary>Generate Animator As Code content. Do not edit the avatar's existing controllers directly.</summary>
+        public abstract void Build(AnimatorCodeBuildContext context);
+
+        internal void ValidateDefinition()
+        {
+            if (string.IsNullOrWhiteSpace(Id))
+            {
+                throw new InvalidOperationException($"{GetType().FullName} returned an empty module Id.");
+            }
+        }
+    }
+}

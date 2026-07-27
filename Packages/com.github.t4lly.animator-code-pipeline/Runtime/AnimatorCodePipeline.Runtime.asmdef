@@ -1,0 +1,17 @@
+{
+  "name": "AnimatorCodePipeline.Runtime",
+  "rootNamespace": "AnimatorCodePipeline",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "VRCSDKBase.dll",
+    "VRCSDK3A.dll"
+  ],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

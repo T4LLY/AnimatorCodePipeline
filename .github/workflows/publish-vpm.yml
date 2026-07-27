@@ -1,0 +1,70 @@
+name: Publish package release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-vpm
+  cancel-in-progress: false
+
+env:
+  PACKAGE_DIR: Packages/com.github.t4lly.animator-code-pipeline
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Read package metadata
+        id: package
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const packagePath = `${process.env.PACKAGE_DIR}/package.json`;
+          const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+          const tag = process.env.GITHUB_REF_NAME;
+
+          if (!/^\d+\.\d+\.\d+$/.test(pkg.version)) {
+            throw new Error(`Invalid package version: ${pkg.version}`);
+          }
+
+          if (process.env.GITHUB_EVENT_NAME === 'push' && tag !== `v${pkg.version}`) {
+            throw new Error(`Tag ${tag} does not match package version ${pkg.version}`);
+          }
+
+          const output = [
+            ['name', pkg.name],
+            ['display_name', pkg.displayName || pkg.name],
+            ['version', pkg.version],
+            ['asset', `AnimatorCodePipeline-${pkg.version}.zip`]
+          ];
+
+          for (const [key, value] of output) {
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
+          }
+          NODE
+
+      - name: Create package archive
+        shell: bash
+        run: |
+          staging_dir="$(mktemp -d)"
+          mkdir -p dist
+          cp -R "$PACKAGE_DIR"/. "$staging_dir"/
+          mkdir -p "$staging_dir/skills/animator-code-pipeline"
+          cp "skills/animator-code-pipeline/SKILL.md" \
+            "$staging_dir/skills/animator-code-pipeline/SKILL.md"
+          cd "$staging_dir"
+          zip -r "$GITHUB_WORKSPACE/dist/${{ steps.package.outputs.asset }}" . -x '*.DS_Store'
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" "dist/${{ steps.package.outputs.asset }}" --title "${{ github.ref_name }}" --generate-notes
