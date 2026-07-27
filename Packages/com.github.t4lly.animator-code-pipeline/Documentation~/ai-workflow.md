@@ -96,7 +96,7 @@ Modular Avatarを利用できる部分についてはModular Avatarの非破壊�
 - 選択したオブジェクトがRadial Puppetに合わせて拡大縮小されれば完成です！
 
 
-![AI開始時のログ](image\milfy_hair_scale.gif "サンプル")
+![AI開始時のログ](https://github.com/T4LLY/AnimatorCodePipeline/blob/main/Packages/com.github.t4lly.animator-code-pipeline/Documentation~/image/milfy_hair_scale.gif "サンプル")
 
 [AIの実装レポート](ai-result.md)
 
