@@ -3,19 +3,14 @@
 
 Animator Code Pipelineは、VRChatアバターのAnimatorを**C#コードから作り、NDMFビルド時に非破壊で組み込む**ためのパッケージです。
 
-Animator Controllerを直接編集して大量のStateやTransitionを管理する代わりに、必要な動作をC#のModuleとして記述します。
-
 ModuleはGitで管理でき、人が直接編集することも、AIに作成や修正を任せることもできます。
 
 ---
 
 ## 1. 何ができるの？
-
-Animator Code Pipelineでは、衣装やアクセサリーの切り替え、表情、ジェスチャー、Blend Tree、Parameter、Modular Avatarとの連携などをC#のModuleとして管理できます。
-
-**Animation ClipやParameter、Animator Controllerの構成をコードから生成できるため、それぞれを個別に作成・管理する手間を減らせます。**
-
-作成したModuleは、NDMFビルド時にAnimator As CodeによってAnimatorへ変換され、Modular Avatarを通してアバターへ統合されます。
+* 衣装・アクセサリー切替、表情、ジェスチャー、Blend Tree、ParameterなどをC# Moduleで管理
+* Animation ClipやAnimator Controller構成をコードから生成
+* NDMFビルド時にAnimator As Codeで生成し、Modular Avatar経由でアバターへ統合
 
 ---
 
@@ -46,11 +41,6 @@ flowchart TB
     Module --> Pipeline
     Merge --> Avatar
 ```
-- `AnimatorCodeModuleSet` selects the project modules explicitly. Modules are instantiated once per enabled Settings component and ordered by `Order`, then `Id`, then full type name.
-- Each Settings component gets one temporary cloned working controller. AAC persistence is requested before module generation; generated assets are build outputs, not project source.
-- `Layer("Suffix")` shares a layer only when the exact suffix is reused within that Settings component. Because AAC normalizes `.` to `_`, distinct suffixes such as `Face.Blink` and `Face_Blink` are rejected as a configuration error.
-- 生成処理はビルド中の一時Animator Controllerに対して行われます。
-- 元のAnimator Controllerへ生成結果を直接書き込まないため、NDMFとModular Avatarの非破壊ワークフローの中で利用できます。
 
 ---
 
@@ -75,8 +65,6 @@ Avatar
 - `AnimatorCodeModuleSet`を設定すると、その中に登録されたModuleがビルド時に使用されます。
 - `Source Controller`には、プロジェクト内の通常の`AnimatorController`を設定します。
 - 同じGameObjectの`ModularAvatarMergeAnimator`にも、同じControllerを設定してください。
-- ACPはSource Controllerをビルド時に複製して使用します。元のControllerとアバター本体のFX Controllerは変更しません。
-- ACP専用のローカル`Animator`コンポーネントは必須ではありません。アバター本体のAnimatorをSource Controllerの代わりに使用しないでください。
 
 ### Modular Avatar Merge Animator
 - **Modular Avatarに付属するコンポーネントです。**
@@ -85,6 +73,7 @@ Avatar
 - ACPの通常構成では、同じGameObjectにあるSource Controllerを参照し、生成後のControllerはNDMFビルドクローン側だけに割り当てられます。
 
 ### Modular Avatar Parameters
+- **Modular Avatarに付属するコンポーネントです。**
 - Moduleが生成・使用するVRChatパラメーターをアバターへ登録する場合に使用します。
 - Menu Itemだけで自動作成に頼らず、同期種別、初期値、保存設定を明示したい場合はこのコンポーネントに登録します。
 
