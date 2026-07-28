@@ -36,10 +36,10 @@ Required package ranges are declared in `package.json` under `vpmDependencies`.
 
 1. Create or choose a feature-host GameObject under the avatar, then add **Animator Code Pipeline**. A same-host **MA Merge Animator** is required and is added automatically by Unity.
 2. Configure the MA Merge Animator controller, playable layer, and path settings.
-3. Create or assign an `AnimatorCodeModuleSet` on ACP Settings.
+3. Add and configure modules directly in the ACP Settings Inspector.
 4. Run **Tools > Animator Code Pipeline > Create Git-managed Module Folder**.
 5. Add project modules under `Assets/AnimatorCodePipeline/Editor/`.
-6. Each module derives from `AnimatorCodeModule` and is added to a Module Set.
+6. Each module derives from `AnimatorCodeModule` and is added directly to ACP Settings.
 7. Enter Play Mode or build the avatar. NDMF invokes the pipeline.
 
 See `Documentation~/architecture.md` and the bundled Skill.

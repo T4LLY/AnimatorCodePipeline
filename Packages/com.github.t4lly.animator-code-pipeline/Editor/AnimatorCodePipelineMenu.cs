@@ -49,17 +49,20 @@ namespace AnimatorCodePipeline
         [MenuItem("Tools/Animator Code Pipeline/Log Configured Modules")]
         private static void LogModules()
         {
-            var moduleSet = Selection.activeObject as AnimatorCodeModuleSet;
-            if (moduleSet == null)
+            var settings = Selection.activeObject as AnimatorCodePipelineSettings;
+            if (settings == null && Selection.activeGameObject != null)
+                settings = Selection.activeGameObject.GetComponent<AnimatorCodePipelineSettings>();
+
+            if (settings == null)
             {
-                Debug.LogWarning("Select an Animator Code Module Set asset first.");
+                Debug.LogWarning("Select a GameObject or component with Animator Code Pipeline Settings first.");
                 return;
             }
 
-            var modules = moduleSet.CreateModuleInstances();
+            var modules = AnimatorCodeModuleCollection.CreateModuleInstances(settings);
             if (modules.Count == 0)
             {
-                Debug.Log("Animator Code Pipeline: the selected Module Set contains no modules.");
+                Debug.Log("Animator Code Pipeline: the selected Settings component contains no enabled modules.");
                 return;
             }
 

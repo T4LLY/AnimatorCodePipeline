@@ -2,11 +2,13 @@
 
 ## [Unreleased]
 
+- Store module definitions and user-adjustable module configuration directly on `AnimatorCodePipelineSettings`; the required `AnimatorCodeModuleSet` asset layer has been removed.
+- Let the ACP Settings Inspector add, remove, configure, and generate modules in place.
 - Preserve exact `Layer(suffix)` values; ACP no longer rewrites `.` to `_`.
-- Create independent build-time module instances from Module Set definitions for each Settings component.
-- Store `AnimatorCodeObjectReference` targets as avatar-relative paths instead of persistent Scene object references.
+- Create independent build-time module instances from serialized Settings definitions for each Settings component.
+- Keep `AnimatorCodeObjectReference` targets as avatar-relative paths so build-time module copies resolve against the active avatar.
 - Bound generated-module registration retries and report compile/assembly-definition problems instead of polling indefinitely.
-- Synchronize public documentation with the MAMA source-of-truth, feature-host, path-root, and Module Set instance model.
+- Synchronize public documentation with the MAMA source-of-truth, feature-host, path-root, and direct Settings module model.
 
 ## 0.2.0 - 2026-07-28
 

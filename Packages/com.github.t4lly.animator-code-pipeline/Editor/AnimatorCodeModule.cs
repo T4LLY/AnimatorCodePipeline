@@ -5,12 +5,12 @@ namespace AnimatorCodePipeline
 {
     /// <summary>
     /// Base type for project-owned Animator As Code modules.
-    /// Definitions are selected explicitly through AnimatorCodeModuleSet and own their build logic and configuration.
+    /// Definitions are stored directly on AnimatorCodePipelineSettings and own their build logic and configuration.
     /// </summary>
     [Serializable]
-    public abstract class AnimatorCodeModule
+    public abstract class AnimatorCodeModule : IAnimatorCodeModuleDefinition
     {
-        /// <summary>Whether this definition participates in the current Module Set.</summary>
+        /// <summary>Whether this definition participates in the current Settings configuration.</summary>
         public bool enabled = true;
 
         /// <summary>A stable identifier used for deterministic ordering and duplicate detection.</summary>

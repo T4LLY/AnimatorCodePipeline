@@ -2,7 +2,7 @@
 
 Animator Code Pipeline is designed to keep Animator generation logic in normal, Git-managed C# source.
 
-Project-owned `AnimatorCodeModule` files define the generated Animator behavior, while Module Sets, Settings, Modular Avatar components, and authored source assets provide the configuration required to reproduce the build.
+Project-owned `AnimatorCodeModule` files define the generated Animator behavior, while Settings, Modular Avatar components, and authored source assets provide the configuration required to reproduce the build.
 
 Generated Animator assets are build-time outputs and are not the source of truth.
 
@@ -29,7 +29,6 @@ Project modules may be divided into additional folders as the project grows. The
 Commit the project-owned inputs required to reproduce the build, including:
 
 * `AnimatorCodeModule` source files;
-* `AnimatorCodeModuleSet` assets;
 * scenes or prefabs containing `AnimatorCodePipelineSettings`;
 * the associated Modular Avatar configuration;
 * project-authored Animator Controller assets referenced by Merge Animator components;

@@ -40,7 +40,7 @@ It runs once for the avatar build in `BuildPhase.Resolving`, before Modular Avat
 
 For each enabled `AnimatorCodePipelineSettings` component, the plugin:
 
-1. loads the enabled module definitions explicitly configured by its `AnimatorCodeModuleSet`;
+1. loads the enabled module definitions stored directly on the Settings component;
 2. validates those definitions and creates independent per-Settings module instances;
 3. evaluates `IsApplicable(...)`;
 4. skips controller generation when no modules are applicable;
@@ -71,7 +71,7 @@ An avatar may contain zero, one, or multiple enabled Settings components.
 
 Each Settings component associates:
 
-* a Module Set;
+* its serialized module definitions and user configuration;
 * exactly one same-host `ModularAvatarMergeAnimator`;
 * one temporary working controller created during the build.
 
@@ -100,7 +100,7 @@ The build flow is:
 ```
 Project C# modules
     ↓
-AnimatorCodeModuleSet
+serialized module definitions
     ↓
 AnimatorCodePipelineSettings
     ↓

@@ -7,7 +7,7 @@ description: Build VRChat Animator features non-destructively as project-owned C
 
 Use this skill to create, modify, review, and debug Animator Code Pipeline (ACP) modules.
 
-**Project-owned C# modules and Module Set configuration are the source of truth.** Generated Animator Controllers, Animation Clips, Layers, States, Transitions, and Blend Trees are build outputs.
+**Project-owned C# modules and the module definitions/configuration serialized directly on `AnimatorCodePipelineSettings` are the source of truth.** Generated Animator Controllers, Animation Clips, Layers, States, Transitions, and Blend Trees are build outputs.
 
 ## 1. Hard Rules
 
@@ -23,6 +23,7 @@ Use this skill to create, modify, review, and debug Animator Code Pipeline (ACP)
 - Use `RequireGameObject`, `RequireTransform`, `RequireComponent<T>`, or `AnimatorCodeObjectReference` for required targets.
 - Do not hide missing required targets with `IsApplicable` or silent returns.
 - A successful write or MCP mutation is not completion. Compile and validate the NDMF result.
+- Do not create or require an `AnimatorCodeModuleSet`. Current ACP stores module definitions directly on `AnimatorCodePipelineSettings`.
 
 ### Never infer component semantics from serialization
 
@@ -58,12 +59,14 @@ Inspect only what the feature requires:
 - exact avatar-relative paths for required targets;
 - relevant Components, Renderers, Materials, Blend Shapes, and Parameters;
 - existing `AnimatorCodePipelineSettings`;
-- assigned `AnimatorCodeModuleSet` and existing module definitions;
+- module definitions/configuration stored directly on the relevant Settings component;
 - same-host `ModularAvatarMergeAnimator`;
 - existing MA Parameters / Menu components;
 - Unity Console compile errors.
 
 If multiple candidates exist, do not guess. Prefer the live Unity selection when it resolves the ambiguity.
+
+When adding a module, identify the intended existing Settings component first. Do not create another ACP host merely because a module needs to be added.
 
 ## 3. Feature Host Placement
 
@@ -100,6 +103,7 @@ Current ACP uses this normal host shape:
 ```text
 ACP Feature Host
 ├── AnimatorCodePipelineSettings
+│   └── Modules
 ├── ModularAvatarMergeAnimator
 ├── ModularAvatarParameters      (when expression parameter registration is needed)
 └── MA Menu components           (when menu controls are needed)
@@ -108,6 +112,27 @@ ACP Feature Host
 `AnimatorCodePipelineSettings` requires a same-host `ModularAvatarMergeAnimator` and disallows multiple ACP Settings components on one GameObject.
 
 **ACP does not require a local Unity `Animator`.** There is no `targetAnimator` field and no ACP-specific blank-controller/local-Animator relationship.
+
+### Modules live directly on Settings
+
+Current ACP does not use a required Module Set asset.
+
+The Settings component serializes its module definitions directly through a polymorphic `[SerializeReference]` list. User-adjustable module fields are edited from the ACP Settings Inspector.
+
+Conceptually:
+
+```text
+AnimatorCodePipelineSettings
+└── Modules
+    ├── BlinkModule
+    │   └── configuration
+    ├── OutfitModule
+    │   └── configuration
+    └── ExpressionModule
+        └── configuration
+```
+
+Use the Settings Inspector's module controls when available. Do not create an `AnimatorCodeModuleSet` asset as an intermediate configuration layer.
 
 ### Merge Animator is the source of truth
 
@@ -136,16 +161,18 @@ An avatar may contain multiple `AnimatorCodePipelineSettings`. Each Settings is 
 
 Each enabled Settings associates:
 
-- one `AnimatorCodeModuleSet`;
+- module definitions and user-adjustable configuration serialized directly on that Settings component;
 - one same-host `ModularAvatarMergeAnimator`;
-- independent build-time module instances copied from the Module Set definitions;
+- independent build-time module instances copied from the serialized definitions;
 - one temporary cloned working controller when applicable modules run;
 - one generated-layer cache for that Settings.
 
 Conceptual lifecycle:
 
 ```text
-Validate Module Set definitions
+Read direct module definitions from Settings
+  ↓
+Validate enabled definitions
   ↓
 Create independent build-time Module instances
   ↓
@@ -174,9 +201,13 @@ Modular Avatar / NDMF performs final integration
 
 Do not recreate this lifecycle inside a module.
 
+Do not mutate the serialized module definitions during `Build`. ACP executes independent build-time copies so transient module state does not leak back into the Settings component or across builds.
+
 ## 6. Module Contract
 
-Modules derive from `AnimatorCodeModule` and are serialized as definitions inside `AnimatorCodeModuleSet`.
+Modules derive from `AnimatorCodeModule`.
+
+Concrete project modules live in the Editor-side project code and implement the runtime-visible module-definition contract through `AnimatorCodeModule`. Their serialized definitions are stored directly on `AnimatorCodePipelineSettings`.
 
 ```csharp
 [Serializable]
@@ -202,12 +233,18 @@ public sealed class ExampleModule : AnimatorCodeModule
 }
 ```
 
-Module fields may expose user-adjustable configuration in the Module Set Inspector. Prefer configuration fields over hard-coding values that users are expected to tune.
+Module fields may expose user-adjustable configuration directly in the ACP Settings Inspector. Prefer configuration fields over hard-coding values that users are expected to tune.
+
+### `enabled`
+
+Each module definition can be enabled or disabled in its Settings configuration.
+
+Disabled definitions do not participate in validation/execution ordering for the build.
 
 ### `Id`
 
 - must be non-empty;
-- must be unique among enabled definitions in the same Module Set;
+- must be unique among enabled definitions in the same `AnimatorCodePipelineSettings`;
 - should remain stable across ordinary refactors;
 - is not an Animator layer name.
 
@@ -233,13 +270,30 @@ Enabled definitions must:
 - be concrete and non-generic;
 - have a public parameterless constructor (an implicit default constructor is fine);
 - return a non-empty `Id`;
-- have a unique `Id` within the Module Set.
+- have a unique `Id` within the same Settings component.
 
 ACP creates independent build-time copies of serialized definitions before module execution.
 
 Do not create a custom NDMF `Plugin<T>` or `[assembly: ExportsPlugin]` from a normal module.
 
-## 7. Build Context
+## 7. Module Editing Workflow
+
+For an existing feature:
+
+1. select or locate the intended `AnimatorCodePipelineSettings`;
+2. inspect its current direct Module list;
+3. reuse or modify an existing module definition when it already represents the requested behavior;
+4. otherwise add the required concrete module type to that Settings;
+5. configure its serialized fields in the Settings Inspector;
+6. compile and validate.
+
+When the ACP Inspector provides `New Module...`, it may be used to generate a new project module class and register it back onto the originating Settings after compilation.
+
+Do not create a separate ScriptableObject solely to hold the module list.
+
+When multiple Settings exist on the avatar, add the module to the Settings representing the correct feature boundary.
+
+## 8. Build Context
 
 Important API:
 
@@ -279,7 +333,9 @@ public override void Build(AnimatorCodeBuildContext context)
 }
 ```
 
-Module Sets are project assets. `AnimatorCodeObjectReference` persists an avatar-relative path, not a Scene-object reference; the Inspector object picker is only a convenient way to choose that path.
+`AnimatorCodeObjectReference` persists an avatar-relative path. The Inspector object picker is a convenient way to select the target, but the build-time module copy resolves the stored path against the active avatar.
+
+Do not assume a serialized Scene-object reference survives or is desirable for ACP build-time module copies.
 
 ### Animation binding root
 
@@ -319,7 +375,7 @@ are distinct suffixes.
 
 Do not call `context.Aac.NewAnimatorController()` for a normal ACP module; use the working controller provided by ACP through `context.Layer(...)`.
 
-## 8. Animator As Code / MA API Verification
+## 9. Animator As Code / MA API Verification
 
 Inspect bundled ACP examples first when relevant:
 
@@ -335,7 +391,7 @@ For AAC or MA APIs not demonstrated by ACP:
 
 Do not invent APIs from memory and do not infer enum meaning from serialized integers.
 
-## 9. Modular Avatar Merge Animator
+## 10. Modular Avatar Merge Animator
 
 Inspect the existing MAMA before changing it.
 
@@ -364,7 +420,7 @@ ACP has no local-Animator requirement. Do not add an `Animator` merely for ACP, 
 
 If the host already has an Animator for some independent reason, evaluate that MAMA option according to the installed MA behavior and the user's architecture.
 
-## 10. Parameters and Menu
+## 11. Parameters and Menu
 
 Creating an Animator parameter does not by itself register it in VRChat Expression Parameters.
 
@@ -374,30 +430,32 @@ Inspect existing parameter and menu components first; do not create duplicate pa
 
 For Radial Puppet and other control types, verify the installed MA API / Inspector fields by name. Do not infer control type or parameter-slot meaning from serialized integers.
 
-## 11. Validation
+## 12. Validation
 
 After making changes:
 
 1. wait for Unity compilation and fix Console errors;
-2. verify the ACP Settings has the intended Module Set;
-3. verify the same-host MAMA exists;
-4. verify MAMA references a regular Animator Controller;
-5. verify playable layer by name;
-6. verify Path Mode and Relative Path Root by name;
-7. verify Module definitions/configuration and duplicate IDs;
-8. verify required target paths or `AnimatorCodeObjectReference` selections;
-9. verify MA Parameters / Menu configuration when used;
-10. read modified components back instead of trusting writes;
-11. run normal NDMF / avatar build validation;
-12. inspect generated Animator / parameter / menu output when possible;
-13. verify the requested behavior in Gesture Manager or another appropriate test environment.
+2. verify the intended direct Module definitions are present on the correct ACP Settings;
+3. verify enabled/disabled module state and user configuration;
+4. verify duplicate module IDs do not exist within that Settings;
+5. verify the same-host MAMA exists;
+6. verify MAMA references a regular Animator Controller;
+7. verify playable layer by name;
+8. verify Path Mode and Relative Path Root by name;
+9. verify required target paths or `AnimatorCodeObjectReference` selections;
+10. verify MA Parameters / Menu configuration when used;
+11. read modified components back instead of trusting writes;
+12. run normal NDMF / avatar build validation;
+13. inspect generated Animator / parameter / menu output when possible;
+14. verify the requested behavior in Gesture Manager or another appropriate test environment.
 
 Do not use Manual Bake for ACP validation.
 
-## 12. Final Review
+## 13. Final Review
 
 Treat these as unexpected unless the user explicitly requested them:
 
+- an `AnimatorCodeModuleSet` asset or any other extra module-list asset;
 - changes to authored `.controller` or `.anim` assets;
 - unrelated Scene / Prefab / Asset changes;
 - package-core edits when implementing only a project module;
@@ -419,7 +477,10 @@ Review the Git diff when Git is available. Do not Commit, Push, or Publish unles
 [ ] Did not infer component semantics from serialized values
 [ ] ACP and MAMA are on the same feature host
 [ ] No local Animator / targetAnimator / blank-controller workaround was introduced
-[ ] Module Set is assigned and definitions are configured
+[ ] Did not create or assign an AnimatorCodeModuleSet
+[ ] Intended Modules are configured directly on the correct ACP Settings
+[ ] Module enabled state and serialized configuration were verified
+[ ] Module IDs are unique within the Settings
 [ ] MAMA Animator Controller was verified
 [ ] MAMA playable layer was verified by name
 [ ] MAMA Path Mode / Relative Path Root were verified by name

@@ -29,7 +29,7 @@ For example, a project module may:
 * inspect multiple component types;
 * generate several related Animator behaviors together;
 * share generated layers with other modules;
-* participate in a deterministic project-defined module set.
+* participate in a deterministic Settings-local module collection.
 
 These requirements lead naturally to a project-level module abstraction rather than a component-oriented processor abstraction.
 
@@ -37,7 +37,7 @@ These requirements lead naturally to a project-level module abstraction rather t
 
 Animator Code Pipeline uses one central `AnimatorCodePipelinePlugin` for the avatar build.
 
-Project Animator logic is implemented as normal C# `AnimatorCodeModule` classes and explicitly selected through `AnimatorCodeModuleSet`.
+Project Animator logic is implemented as normal C# `AnimatorCodeModule` classes and explicitly stored on `AnimatorCodePipelineSettings`.
 
 An avatar may contain multiple enabled `AnimatorCodePipelineSettings` components. Each Settings component defines an independent generation configuration.
 
@@ -61,7 +61,7 @@ A module may represent a feature such as clothing, gestures, props, facial behav
 
 This allows the project to choose appropriate code boundaries without requiring each feature to define its own NDMF integration.
 
-Adding a feature normally means adding or editing an `AnimatorCodeModule` and selecting it in a Module Set.
+Adding a feature normally means adding or editing an `AnimatorCodeModule` and adding that module definition to the relevant Settings component.
 
 The central pipeline continues to handle the NDMF lifecycle and the shared build environment.
 

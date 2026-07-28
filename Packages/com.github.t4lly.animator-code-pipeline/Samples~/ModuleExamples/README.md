@@ -2,7 +2,7 @@
 
 These are learning examples, not additional required templates.
 
-Copy or import the sample, replace every `REPLACE/...` value, then add only the definitions you want to an `AnimatorCodeModuleSet`.
+Copy or import the sample, replace every `REPLACE/...` value, then add only the definitions you want directly to the target `AnimatorCodePipelineSettings`.
 
 ## Host setup
 

@@ -3,40 +3,31 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEditor;
-using UnityEditor.PackageManager;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace AnimatorCodePipeline
 {
-    [CustomEditor(typeof(AnimatorCodeModuleSet))]
-    internal sealed class AnimatorCodeModuleSetEditor : Editor
+    internal static class AnimatorCodeModuleInspectorUtility
     {
-        private SerializedProperty _modules;
-
-        private void OnEnable()
+        internal static void DrawModules(
+            SerializedObject serializedObject,
+            SerializedProperty modules,
+            AnimatorCodePipelineSettings settings)
         {
-            _modules = serializedObject.FindProperty("modules");
-        }
+            if (serializedObject == null) throw new ArgumentNullException(nameof(serializedObject));
+            if (modules == null) throw new ArgumentNullException(nameof(modules));
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
 
-        public override void OnInspectorGUI()
-        {
-            AnimatorCodeModuleSetInspectorUtility.DrawModules(
-                serializedObject,
-                _modules,
-                (AnimatorCodeModuleSet)target);
-        }
-    }
-
-    internal static class AnimatorCodeModuleSetInspectorUtility
-    {
-        internal static void DrawModules(SerializedObject serializedObject, SerializedProperty modules, AnimatorCodeModuleSet moduleSet)
-        {
             serializedObject.Update();
+
+            EditorGUILayout.LabelField("Modules", EditorStyles.boldLabel);
             for (var index = 0; index < modules.arraySize; index++)
             {
                 var element = modules.GetArrayElementAtIndex(index);
                 EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                 EditorGUILayout.BeginHorizontal();
+
                 var previousIndentLevel = EditorGUI.indentLevel;
                 EditorGUI.indentLevel = previousIndentLevel + 1;
                 element.isExpanded = EditorGUILayout.Foldout(
@@ -46,6 +37,7 @@ namespace AnimatorCodePipeline
                         : element.managedReferenceValue.GetType().Name,
                     true);
                 EditorGUI.indentLevel = previousIndentLevel;
+
                 if (GUILayout.Button("Remove", GUILayout.Width(70)))
                 {
                     modules.DeleteArrayElementAtIndex(index);
@@ -53,6 +45,7 @@ namespace AnimatorCodePipeline
                     EditorGUILayout.EndVertical();
                     break;
                 }
+
                 EditorGUILayout.EndHorizontal();
                 if (element.isExpanded)
                     DrawModuleProperties(element);
@@ -61,31 +54,21 @@ namespace AnimatorCodePipeline
 
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("New Module..."))
-                AnimatorCodeModuleGenerator.Create(moduleSet);
-            if (GUILayout.Button("Add Module Definition"))
-            {
-                var menu = new GenericMenu();
-                var types = TypeCache.GetTypesDerivedFrom<AnimatorCodeModule>()
-                    .Where(type => !type.IsAbstract && !type.ContainsGenericParameters && type.GetConstructor(Type.EmptyTypes) != null)
-                    .OrderBy(type => type.FullName, StringComparer.Ordinal)
-                    .ToArray();
-                foreach (var type in types)
-                {
-                    var capturedType = type;
-                    menu.AddItem(new GUIContent(type.FullName), false, () => Add(capturedType, serializedObject, modules, moduleSet));
-                }
-                if (types.Length == 0)
-                    menu.AddDisabledItem(new GUIContent("No module definitions found"));
-                menu.ShowAsContext();
-            }
+                AnimatorCodeModuleGenerator.Create(settings);
+            if (GUILayout.Button("Add Module"))
+                ShowAddMenu(serializedObject, modules, settings);
             EditorGUILayout.EndHorizontal();
 
             serializedObject.ApplyModifiedProperties();
             try
             {
-                var count = moduleSet.ValidateDefinitions();
+                var count = AnimatorCodeModuleCollection.ValidateDefinitions(settings);
                 if (count == 0)
-                    EditorGUILayout.HelpBox("This Module Set is empty. ACP will perform no work.", MessageType.Warning);
+                {
+                    EditorGUILayout.HelpBox(
+                        "This Settings component has no enabled modules. ACP will perform no work.",
+                        MessageType.Warning);
+                }
             }
             catch (Exception exception)
             {
@@ -93,18 +76,46 @@ namespace AnimatorCodePipeline
             }
         }
 
+        private static void ShowAddMenu(
+            SerializedObject serializedObject,
+            SerializedProperty modules,
+            AnimatorCodePipelineSettings settings)
+        {
+            var menu = new GenericMenu();
+            var types = TypeCache.GetTypesDerivedFrom<AnimatorCodeModule>()
+                .Where(type => !type.IsAbstract &&
+                               !type.ContainsGenericParameters &&
+                               type.GetConstructor(Type.EmptyTypes) != null)
+                .OrderBy(type => type.FullName, StringComparer.Ordinal)
+                .ToArray();
+
+            foreach (var type in types)
+            {
+                var capturedType = type;
+                menu.AddItem(
+                    new GUIContent(type.FullName),
+                    false,
+                    () => Add(capturedType, serializedObject, modules, settings));
+            }
+
+            if (types.Length == 0)
+                menu.AddDisabledItem(new GUIContent("No module definitions found"));
+
+            menu.ShowAsContext();
+        }
+
         private static void Add(
             Type type,
             SerializedObject serializedObject,
             SerializedProperty modules,
-            AnimatorCodeModuleSet moduleSet)
+            AnimatorCodePipelineSettings settings)
         {
             serializedObject.Update();
             modules.arraySize++;
             modules.GetArrayElementAtIndex(modules.arraySize - 1).managedReferenceValue =
                 Activator.CreateInstance(type);
             serializedObject.ApplyModifiedProperties();
-            EditorUtility.SetDirty(moduleSet);
+            EditorUtility.SetDirty(settings);
         }
 
         private static void DrawModuleProperties(SerializedProperty element)
@@ -129,7 +140,7 @@ namespace AnimatorCodePipeline
     [InitializeOnLoad]
     internal static class AnimatorCodeModuleGenerator
     {
-        private const string PendingModuleSetKey = "AnimatorCodePipeline.NewModule.ModuleSet";
+        private const string PendingSettingsKey = "AnimatorCodePipeline.NewModule.Settings";
         private const string PendingScriptKey = "AnimatorCodePipeline.NewModule.Script";
         private const string PendingAttemptKey = "AnimatorCodePipeline.NewModule.Attempt";
         private const string FolderKeyPrefix = "AnimatorCodePipeline.NewModule.Folder.";
@@ -140,8 +151,10 @@ namespace AnimatorCodePipeline
             EditorApplication.delayCall += TryRegisterPendingModule;
         }
 
-        internal static void Create(AnimatorCodeModuleSet moduleSet)
+        internal static void Create(AnimatorCodePipelineSettings settings)
         {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
             var folderKey = FolderKeyPrefix + Application.dataPath;
             var rememberedFolder = EditorPrefs.GetString(folderKey, "Assets");
             if (!AssetDatabase.IsValidFolder(rememberedFolder))
@@ -167,10 +180,19 @@ namespace AnimatorCodePipeline
                     "Cancel"))
                 return;
 
+            var settingsId = GlobalObjectId.GetGlobalObjectIdSlow(settings);
+            if (settingsId.identifierType == 0)
+            {
+                Debug.LogError(
+                    "Animator Code Pipeline could not identify the Settings component for generated-module registration. " +
+                    "Save the scene or prefab and try again.");
+                return;
+            }
+
             EnsureEditorAssemblyReference(folder);
             File.WriteAllText(ToAbsolutePath(scriptPath), LoadTemplate(className), new UTF8Encoding(false));
             EditorPrefs.SetString(folderKey, folder);
-            SessionState.SetString(PendingModuleSetKey, AssetDatabase.GetAssetPath(moduleSet));
+            SessionState.SetString(PendingSettingsKey, settingsId.ToString());
             SessionState.SetString(PendingScriptKey, scriptPath);
             SessionState.SetInt(PendingAttemptKey, 0);
             AssetDatabase.Refresh();
@@ -179,9 +201,9 @@ namespace AnimatorCodePipeline
 
         private static void TryRegisterPendingModule()
         {
-            var moduleSetPath = SessionState.GetString(PendingModuleSetKey, string.Empty);
+            var settingsIdText = SessionState.GetString(PendingSettingsKey, string.Empty);
             var scriptPath = SessionState.GetString(PendingScriptKey, string.Empty);
-            if (string.IsNullOrEmpty(moduleSetPath) || string.IsNullOrEmpty(scriptPath))
+            if (string.IsNullOrEmpty(settingsIdText) || string.IsNullOrEmpty(scriptPath))
                 return;
 
             var script = AssetDatabase.LoadAssetAtPath<MonoScript>(scriptPath);
@@ -204,7 +226,7 @@ namespace AnimatorCodePipeline
 
                 Debug.LogWarning(
                     $"Animator Code Pipeline could not register the generated module '{scriptPath}'. " +
-                    "Fix any compile errors, then add the module definition from the Module Set Inspector.");
+                    "Fix any compile errors, then add the module from the Animator Code Pipeline Settings Inspector.");
                 ClearPending();
                 return;
             }
@@ -218,20 +240,40 @@ namespace AnimatorCodePipeline
                 return;
             }
 
-            var moduleSet = AssetDatabase.LoadAssetAtPath<AnimatorCodeModuleSet>(moduleSetPath);
-            if (moduleSet == null)
+            if (!GlobalObjectId.TryParse(settingsIdText, out var settingsId))
             {
+                Debug.LogError(
+                    "Animator Code Pipeline could not parse the pending Settings object identifier. " +
+                    "Add the generated module manually from the Settings Inspector.");
                 ClearPending();
                 return;
             }
 
-            var serializedObject = new SerializedObject(moduleSet);
+            var settings = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(settingsId) as AnimatorCodePipelineSettings;
+            if (settings == null)
+            {
+                Debug.LogWarning(
+                    "Animator Code Pipeline could not find the Settings component that requested the generated module. " +
+                    "Add the generated module manually from the Settings Inspector.");
+                ClearPending();
+                return;
+            }
+
+            var serializedObject = new SerializedObject(settings);
             var modules = serializedObject.FindProperty("modules");
+            if (modules == null)
+            {
+                Debug.LogError("Animator Code Pipeline Settings no longer exposes its serialized module list.");
+                ClearPending();
+                return;
+            }
+
             for (var index = 0; index < modules.arraySize; index++)
             {
                 if (modules.GetArrayElementAtIndex(index).managedReferenceValue?.GetType() == type)
                 {
                     ClearPending();
+                    Selection.activeObject = settings;
                     return;
                 }
             }
@@ -240,15 +282,20 @@ namespace AnimatorCodePipeline
             modules.GetArrayElementAtIndex(modules.arraySize - 1).managedReferenceValue =
                 Activator.CreateInstance(type);
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            EditorUtility.SetDirty(moduleSet);
-            AssetDatabase.SaveAssets();
+            EditorUtility.SetDirty(settings);
+
+            if (settings.gameObject.scene.IsValid())
+                EditorSceneManager.MarkSceneDirty(settings.gameObject.scene);
+            else
+                AssetDatabase.SaveAssets();
+
             ClearPending();
-            Selection.activeObject = moduleSet;
+            Selection.activeObject = settings;
         }
 
         private static void ClearPending()
         {
-            SessionState.EraseString(PendingModuleSetKey);
+            SessionState.EraseString(PendingSettingsKey);
             SessionState.EraseString(PendingScriptKey);
             SessionState.EraseInt(PendingAttemptKey);
         }
@@ -349,7 +396,7 @@ namespace AnimatorCodePipeline
         private static string GetTemplatePath(string fileName)
         {
             var package = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(
-                "Packages/com.github.t4lly.animator-code-pipeline/Editor/AnimatorCodeModuleSetEditor.cs");
+                "Packages/com.github.t4lly.animator-code-pipeline/Editor/AnimatorCodeModuleInspectorUtility.cs");
             if (package == null || string.IsNullOrEmpty(package.resolvedPath))
                 throw new InvalidOperationException("Animator Code Pipeline package path could not be resolved.");
 

@@ -14,17 +14,14 @@ Animator Code Pipeline separates project Animator logic from the NDMF integratio
 
 Project features are implemented as normal C# classes derived from `AnimatorCodeModule`.
 
-Those modules are explicitly selected through an `AnimatorCodeModuleSet` and executed by the central `AnimatorCodePipelinePlugin`.
+Those modules are explicitly stored on `AnimatorCodePipelineSettings` and executed by the central `AnimatorCodePipelinePlugin`.
 
 During execution, each applicable module receives an `AnimatorCodeBuildContext`.
 
 ```text
 AnimatorCodeModule
         ↓
-selected by
-AnimatorCodeModuleSet
-        ↓
-used by
+stored directly on
 AnimatorCodePipelineSettings
         ↓
 executed by
@@ -102,7 +99,7 @@ Modules are ordered deterministically by:
 2. `Id`;
 3. fully qualified type name.
 
-The order in which definitions appear inside `AnimatorCodeModuleSet` is not the execution order.
+The order in which definitions appear in the Settings Inspector is not the execution order.
 
 Use `Order` only when generation sequence matters. `Order` is a deterministic execution-order hint, not a module dependency graph.
 
@@ -169,7 +166,7 @@ They may therefore intentionally coordinate through shared Animator parameters o
 
 ## 3. Module construction and validation
 
-Modules are selected explicitly through `AnimatorCodeModuleSet`.
+Modules are selected explicitly by adding their definitions directly to `AnimatorCodePipelineSettings`.
 
 Each configured module definition must satisfy the module contract.
 
@@ -182,46 +179,34 @@ A valid module definition must:
 - contain no unbound generic parameters;
 - be constructible through a public parameterless constructor;
 - return a non-empty, non-whitespace `Id`;
-- have an `Id` that is unique within the processed module set.
+- have an `Id` that is unique within the processed Settings component.
 
 Invalid enabled module definitions are treated as configuration errors.
 
 They are not silently skipped.
 
-This fail-fast behavior is intentional: a Module Set should describe the code that will actually participate in the build.
+This fail-fast behavior is intentional: one Settings component should describe the code that will actually participate in that generation boundary.
 
 ---
 
-## 4. `AnimatorCodeModuleSet`
+## 4. Modules on `AnimatorCodePipelineSettings`
 
-`AnimatorCodeModuleSet` is an Editor-only ScriptableObject used to select serializable project module definitions.
+`AnimatorCodePipelineSettings` stores its module definitions directly.
 
-It is an execution configuration, not an automatic discovery mechanism.
-
-A Module Set contains `[SerializeReference]` `AnimatorCodeModule` definitions, including user-adjustable configuration.
+The `Modules` list is serialized with `[SerializeReference]`, so concrete project-owned `AnimatorCodeModule` types can expose user-adjustable fields directly in the Settings Inspector.
 
 ```text
-AnimatorCodeModuleSet
+AnimatorCodePipelineSettings
 ├── ClothesModuleDefinition
 ├── PropsModuleDefinition
 └── FaceModuleDefinition
 ```
 
-The same Module Set may be referenced by multiple Settings components.
+There is no intermediate configuration asset between Settings and the module definitions.
 
-Each Settings configuration receives independent module instances copied from the serialized definitions, and its working controller is also independent.
+At build time ACP validates the enabled definitions and creates independent module instances copied from the serialized definitions before calling `IsApplicable(...)` or `Build(...)`. This keeps transient module state out of the authored Settings component.
 
-The Module Set list order does not define execution order.
-
-Execution order is determined by the module contract:
-
-```text
-Order
-  ↓
-Id
-  ↓
-fully qualified type name
-```
+The Inspector list order does not define execution order.
 
 ---
 
@@ -338,7 +323,7 @@ These helpers are preferred over manual `Transform.Find(...)` calls for required
 
 `AnimatorCodeObjectReference` is intended for user-adjustable target fields in Module definitions.
 
-A Module Set is a project asset, so ACP persists only the avatar-relative path. The Inspector may use a live Scene object as a picker convenience, but the Scene object itself is not serialized into the Module Set asset.
+ACP persists the avatar-relative path and resolves it against the active avatar during the build. The Inspector may use a live Scene object as a picker convenience, while build-time module copies remain path-based.
 
 ```csharp
 public AnimatorCodeObjectReference target = new AnimatorCodeObjectReference();
@@ -454,11 +439,11 @@ Conceptually:
 ```text
 Avatar
 ├── Settings A
-│   ├── ModuleSet A
+│   ├── Modules A
 │   └── Working Controller A
 │
 └── Settings B
-    ├── ModuleSet B
+    ├── Modules B
     └── Working Controller B
 ```
 

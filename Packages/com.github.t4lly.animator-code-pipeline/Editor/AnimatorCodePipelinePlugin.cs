@@ -12,7 +12,7 @@ using UnityEngine;
 namespace AnimatorCodePipeline
 {
     /// <summary>
-    /// One central NDMF plugin. It evaluates each configured Module Set independently per avatar build.
+    /// One central NDMF plugin. It evaluates each enabled Settings component independently per avatar build.
     /// </summary>
     public sealed class AnimatorCodePipelinePlugin : Plugin<AnimatorCodePipelinePlugin>
     {
@@ -48,12 +48,6 @@ namespace AnimatorCodePipeline
             {
                 if (settings == null || !settings.enabled) continue;
 
-                if (settings.moduleSet as AnimatorCodeModuleSet == null)
-                {
-                    throw new InvalidOperationException(
-                        $"Animator Code Pipeline on '{settings.name}' requires an AnimatorCodeModuleSet asset.");
-                }
-
                 var mergeAnimator = settings.GetComponent<ModularAvatarMergeAnimator>();
                 if (mergeAnimator == null)
                     throw new InvalidOperationException(
@@ -73,20 +67,13 @@ namespace AnimatorCodePipeline
         private static void GenerateForSettings(BuildContext ctx, AnimatorCodePipelineSettings settings)
         {
             if (settings == null || !settings.enabled) return;
-            var moduleSet = settings.moduleSet as AnimatorCodeModuleSet;
-            if (moduleSet == null)
-            {
-                throw new InvalidOperationException(
-                    $"Animator Code Pipeline on '{settings.name}' requires a Module Set.");
-            }
-
             if (settings.GetComponent<ModularAvatarMergeAnimator>() == null)
             {
                 throw new InvalidOperationException(
                     $"Animator Code Pipeline on '{settings.name}' requires an MA Merge Animator on the same GameObject.");
             }
 
-            var modules = moduleSet.CreateModuleInstances();
+            var modules = AnimatorCodeModuleCollection.CreateModuleInstances(settings);
             if (modules.Count == 0) return;
 
             var applicableModules = GetApplicableModules(

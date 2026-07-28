@@ -60,8 +60,8 @@ Avatar
 
 ### AnimatorCodePipelineSettings
 - **Animator Code Pipelineのメインコンポーネントです。** 同じGameObjectに`ModularAvatarMergeAnimator`を必要とします。
-- どのModuleを使うかを指定するためのコンポーネントです。
-- `AnimatorCodeModuleSet`を設定すると、その中に登録されたSerializeReference Module定義がビルド時に使用されます。各Settingsのビルドでは定義から独立したModuleインスタンスが作成されます。
+- 使用するModuleと、そのユーザー調整可能な設定を直接保持するコンポーネントです。
+- Inspectorの`Modules`からModuleを追加・削除・設定できます。ビルド時には定義から独立したModuleインスタンスが作成されます。
 
 ### Modular Avatar Merge Animator
 - **Modular Avatarに付属するコンポーネントです。**
@@ -111,4 +111,4 @@ flowchart TB
 ### 自分でModuleを実装したい人
 
 - [Module API Reference](module-api.md)
-- `AnimatorCodeModule`、`AnimatorCodeBuildContext`、ModuleSet、Layer共有、非破壊ビルドなど、Animator Code Pipelineの技術仕様を説明します。
+- `AnimatorCodeModule`、`AnimatorCodeBuildContext`、Settings上のModule構成、Layer共有、非破壊ビルドなど、Animator Code Pipelineの技術仕様を説明します。

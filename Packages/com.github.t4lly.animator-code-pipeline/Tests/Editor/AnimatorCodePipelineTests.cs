@@ -11,12 +11,13 @@ namespace AnimatorCodePipeline.Tests
     public sealed class AnimatorCodePipelineTests
     {
         [Test]
-        public void ModuleSet_OrdersEnabledDefinitionsAndSkipsDisabled()
+        public void Settings_OrdersEnabledDefinitionsAndSkipsDisabled()
         {
-            var set = ScriptableObject.CreateInstance<AnimatorCodeModuleSet>();
+            var go = new GameObject("ACP Settings");
             try
             {
-                var serialized = new SerializedObject(set);
+                var settings = go.AddComponent<AnimatorCodePipelineSettings>();
+                var serialized = new SerializedObject(settings);
                 var modules = serialized.FindProperty("modules");
                 modules.arraySize = 3;
                 AddDefinition(modules.GetArrayElementAtIndex(0), typeof(TestLastModule), true);
@@ -24,12 +25,12 @@ namespace AnimatorCodePipeline.Tests
                 AddDefinition(modules.GetArrayElementAtIndex(2), typeof(TestFirstModule), true);
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
-                Assert.That(set.CreateModuleInstances().Select(module => module.Id),
+                Assert.That(AnimatorCodeModuleCollection.CreateModuleInstances(settings).Select(module => module.Id),
                     Is.EqualTo(new[] { "test.first", "test.last" }));
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(set);
+                UnityEngine.Object.DestroyImmediate(go);
             }
         }
 
@@ -151,12 +152,13 @@ namespace AnimatorCodePipeline.Tests
         }
 
         [Test]
-        public void ModuleSet_CreatesIndependentModuleInstancesPerCall()
+        public void Settings_CreatesIndependentModuleInstancesPerCall()
         {
-            var set = ScriptableObject.CreateInstance<AnimatorCodeModuleSet>();
+            var go = new GameObject("ACP Settings");
             try
             {
-                var serialized = new SerializedObject(set);
+                var settings = go.AddComponent<AnimatorCodePipelineSettings>();
+                var serialized = new SerializedObject(settings);
                 var modules = serialized.FindProperty("modules");
                 modules.arraySize = 1;
                 modules.GetArrayElementAtIndex(0).managedReferenceValue = new TestConfiguredModule
@@ -165,8 +167,8 @@ namespace AnimatorCodePipeline.Tests
                 };
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
-                var first = (TestConfiguredModule)set.CreateModuleInstances().Single();
-                var second = (TestConfiguredModule)set.CreateModuleInstances().Single();
+                var first = (TestConfiguredModule)AnimatorCodeModuleCollection.CreateModuleInstances(settings).Single();
+                var second = (TestConfiguredModule)AnimatorCodeModuleCollection.CreateModuleInstances(settings).Single();
 
                 Assert.That(second, Is.Not.SameAs(first));
                 Assert.That(first.configuredValue, Is.EqualTo(42));
@@ -177,7 +179,7 @@ namespace AnimatorCodePipeline.Tests
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(set);
+                UnityEngine.Object.DestroyImmediate(go);
             }
         }
 

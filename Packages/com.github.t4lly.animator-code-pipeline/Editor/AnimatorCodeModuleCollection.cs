@@ -2,29 +2,25 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
-using UnityEngine;
 
 namespace AnimatorCodePipeline
 {
-    [CreateAssetMenu(
-        fileName = "AnimatorCodeModuleSet",
-        menuName = "Animator Code Pipeline/Module Set")]
-    public sealed class AnimatorCodeModuleSet : ScriptableObject
+    internal static class AnimatorCodeModuleCollection
     {
-        [Tooltip("Module definitions and their user-adjustable configuration. Disabled definitions are skipped.")]
-        [SerializeReference]
-        private List<AnimatorCodeModule> modules = new List<AnimatorCodeModule>();
-
-        internal int ValidateDefinitions()
+        internal static int ValidateDefinitions(AnimatorCodePipelineSettings settings)
         {
-            var selected = GetEnabledDefinitions();
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+            var selected = GetEnabledDefinitions(settings.Modules);
             ValidateSelectedDefinitions(selected);
             return selected.Length;
         }
 
-        internal IReadOnlyList<AnimatorCodeModule> CreateModuleInstances()
+        internal static IReadOnlyList<AnimatorCodeModule> CreateModuleInstances(AnimatorCodePipelineSettings settings)
         {
-            var selected = GetEnabledDefinitions();
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+            var selected = GetEnabledDefinitions(settings.Modules);
             ValidateSelectedDefinitions(selected);
 
             return selected
@@ -35,11 +31,29 @@ namespace AnimatorCodePipeline
                 .ToArray();
         }
 
-        private AnimatorCodeModule[] GetEnabledDefinitions()
+        private static AnimatorCodeModule[] GetEnabledDefinitions(
+            IReadOnlyList<IAnimatorCodeModuleDefinition> definitions)
         {
-            return modules
-                .Where(module => module != null && module.enabled)
-                .ToArray();
+            if (definitions == null)
+                return Array.Empty<AnimatorCodeModule>();
+
+            var modules = new List<AnimatorCodeModule>(definitions.Count);
+            foreach (var definition in definitions)
+            {
+                if (definition == null)
+                    continue;
+
+                if (!(definition is AnimatorCodeModule module))
+                {
+                    throw new InvalidOperationException(
+                        $"Animator Code Pipeline encountered unsupported module definition type '{definition.GetType().FullName}'.");
+                }
+
+                if (module.enabled)
+                    modules.Add(module);
+            }
+
+            return modules.ToArray();
         }
 
         private static void ValidateSelectedDefinitions(IReadOnlyList<AnimatorCodeModule> selected)
@@ -51,8 +65,10 @@ namespace AnimatorCodePipeline
                 .GroupBy(module => module.Id, StringComparer.Ordinal)
                 .FirstOrDefault(group => group.Count() > 1);
             if (duplicate != null)
+            {
                 throw new InvalidOperationException(
-                    $"Animator Code Pipeline found duplicate module Id '{duplicate.Key}'.");
+                    $"Animator Code Pipeline found duplicate module Id '{duplicate.Key}' in one Settings component.");
+            }
         }
 
         private static AnimatorCodeModule CloneDefinition(AnimatorCodeModule source)

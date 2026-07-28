@@ -5,7 +5,7 @@ namespace AnimatorCodePipeline
 {
     /// <summary>
     /// Stores an avatar-relative path for a user-configurable target.
-    /// Scene object references are intentionally not persisted because Module Sets are project assets.
+    /// The serialized path is resolved against the active avatar so build-time module copies do not depend on persistent Scene object references.
     /// </summary>
     [Serializable]
     public sealed class AnimatorCodeObjectReference
