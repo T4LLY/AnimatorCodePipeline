@@ -1,5 +1,6 @@
+using System;
 using System.Collections.Generic;
-using UnityEditor;
+using System.Linq;
 using UnityEngine;
 
 namespace AnimatorCodePipeline
@@ -9,15 +10,28 @@ namespace AnimatorCodePipeline
         menuName = "Animator Code Pipeline/Module Set")]
     public sealed class AnimatorCodeModuleSet : ScriptableObject
     {
-        [Tooltip("Compiled AnimatorCodeModule scripts. Execution order is determined by Order, then Id, then full type name.")]
-        [SerializeField]
-        private List<MonoScript> modules = new List<MonoScript>();
-
-        internal IReadOnlyList<MonoScript> Modules => modules;
+        [Tooltip("Module definitions and their user-adjustable configuration. Disabled definitions are skipped.")]
+        [SerializeReference]
+        private List<AnimatorCodeModule> modules = new List<AnimatorCodeModule>();
 
         internal IReadOnlyList<AnimatorCodeModule> CreateModules()
         {
-            return AnimatorCodeModuleDiscovery.CreateAll(modules);
+            var selected = modules.Where(module => module != null && module.enabled).ToArray();
+            foreach (var module in selected)
+                module.ValidateDefinition();
+
+            var duplicate = selected
+                .GroupBy(module => module.Id, StringComparer.Ordinal)
+                .FirstOrDefault(group => group.Count() > 1);
+            if (duplicate != null)
+                throw new InvalidOperationException(
+                    $"Animator Code Pipeline found duplicate module Id '{duplicate.Key}'.");
+
+            return selected
+                .OrderBy(module => module.Order)
+                .ThenBy(module => module.Id, StringComparer.Ordinal)
+                .ThenBy(module => module.GetType().FullName, StringComparer.Ordinal)
+                .ToArray();
         }
     }
 }

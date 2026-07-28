@@ -5,10 +5,14 @@ namespace AnimatorCodePipeline
 {
     /// <summary>
     /// Base type for project-owned Animator As Code modules.
-    /// Modules are selected explicitly through AnimatorCodeModuleSet and instantiated once per avatar build.
+    /// Definitions are selected explicitly through AnimatorCodeModuleSet and own their build logic and configuration.
     /// </summary>
+    [Serializable]
     public abstract class AnimatorCodeModule
     {
+        /// <summary>Whether this definition participates in the current Module Set.</summary>
+        public bool enabled = true;
+
         /// <summary>A stable identifier used for deterministic ordering and duplicate detection.</summary>
         public abstract string Id { get; }
 

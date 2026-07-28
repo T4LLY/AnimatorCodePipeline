@@ -1,3 +1,4 @@
+using System;
 using AnimatorAsCode.V1;
 
 namespace ProjectAnimatorCode.Samples
@@ -6,6 +7,7 @@ namespace ProjectAnimatorCode.Samples
     // - Bool parameter groups
     // - Requiring multiple conditions to enter a state
     // - Returning when any condition becomes false
+    [Serializable]
     public sealed class ExampleTwoConditionModule : AnimatorCodePipeline.AnimatorCodeModule
     {
         public override string Id => "sample.two-condition";

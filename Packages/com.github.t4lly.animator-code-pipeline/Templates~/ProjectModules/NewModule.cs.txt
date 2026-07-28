@@ -1,0 +1,33 @@
+using System;
+using UnityEngine;
+using AnimatorCodePipeline;
+
+namespace AnimatorCodePipeline.Generated
+{
+    [Serializable]
+    public sealed class {{CLASS_NAME}} : AnimatorCodeModule
+    {
+        [SerializeField] private string moduleId = "{{MODULE_ID}}";
+        [SerializeField] private int order;
+        [SerializeField] private string layerName = "{{LAYER_NAME}}";
+
+        public override string Id => moduleId;
+        public override int Order => order;
+
+        public override bool IsApplicable(GameObject avatarRoot, AnimatorCodePipelineSettings settings) => true;
+
+        public override void Build(AnimatorCodeBuildContext context)
+        {
+            // Add Animator generation here. For example:
+            // var layer = context.Layer(layerName);
+            // var parameter = layer.BoolParameter("FeatureEnabled");
+            // var target = context.RequireGameObject("Avatar/Relative/Path");
+            // var clip = context.Aac.NewClip("Feature On");
+            // var on = layer.NewState("On").WithAnimation(clip);
+            // var off = layer.NewState("Off");
+            // off.TransitionsTo(on).When(parameter.IsTrue());
+            // on.TransitionsTo(off).When(parameter.IsFalse());
+            // context.ModularAvatar.NewParameter(parameter).WithDefaultValue(false);
+        }
+    }
+}

@@ -1,3 +1,4 @@
+using System;
 using AnimatorAsCode.V1;
 using UnityEngine;
 
@@ -7,6 +8,7 @@ namespace ProjectAnimatorCode.Samples
     // - RequireTransform
     // - Animating Transform scale instead of GameObject active state
     // - Preserving the authored scale as the enabled value
+    [Serializable]
     public sealed class ExampleTransformScaleModule : AnimatorCodePipeline.AnimatorCodeModule
     {
         public override string Id => "sample.transform-scale";

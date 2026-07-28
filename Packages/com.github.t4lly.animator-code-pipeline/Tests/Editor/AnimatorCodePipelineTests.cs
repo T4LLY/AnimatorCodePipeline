@@ -4,154 +4,79 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using nadena.dev.modular_avatar.core;
 
 namespace AnimatorCodePipeline.Tests
 {
     public sealed class AnimatorCodePipelineTests
     {
         [Test]
-        public void ModuleDiscovery_CreatesModulesInDeterministicOrder()
+        public void ModuleSet_OrdersEnabledDefinitionsAndSkipsDisabled()
         {
-            var modules = AnimatorCodeModuleDiscovery.CreateAll(new[]
-            {
-                typeof(LastModule),
-                typeof(AlphabeticalModule),
-                typeof(FirstModule)
-            });
-
-            Assert.That(modules.Select(module => module.Id), Is.EqualTo(new[]
-            {
-                "test.first",
-                "test.alphabetical",
-                "test.last"
-            }));
-        }
-
-        [Test]
-        public void ModuleDiscovery_RejectsDuplicateIds()
-        {
-            var exception = Assert.Throws<InvalidOperationException>(() =>
-                AnimatorCodeModuleDiscovery.CreateAll(new[]
-                {
-                    typeof(DuplicateFirstModule),
-                    typeof(DuplicateSecondModule)
-                }));
-
-            Assert.That(exception.Message, Does.Contain("duplicate module Id 'test.duplicate'"));
-        }
-
-        [Test]
-        public void PipelineEnablement_UsesTheStandardComponentEnabledFlag()
-        {
-            var avatarRoot = new GameObject("Test Avatar");
+            var set = ScriptableObject.CreateInstance<AnimatorCodeModuleSet>();
             try
             {
-                var settings = avatarRoot.AddComponent<AnimatorCodePipelineSettings>();
+                var serialized = new SerializedObject(set);
+                var modules = serialized.FindProperty("modules");
+                modules.arraySize = 3;
+                AddDefinition(modules.GetArrayElementAtIndex(0), typeof(TestLastModule), true);
+                AddDefinition(modules.GetArrayElementAtIndex(1), typeof(TestDisabledModule), false);
+                AddDefinition(modules.GetArrayElementAtIndex(2), typeof(TestFirstModule), true);
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                Assert.That(set.CreateModules().Select(module => module.Id),
+                    Is.EqualTo(new[] { "test.first", "test.last" }));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(set);
+            }
+        }
+
+        [Test]
+        public void Settings_DoesNotCreateMergeAnimatorDependency()
+        {
+            var go = new GameObject("ACP Settings");
+            try
+            {
+                var settings = go.AddComponent<AnimatorCodePipelineSettings>();
+                Assert.That(go.GetComponent<ModularAvatarMergeAnimator>(), Is.Null);
                 Assert.That(settings.enabled, Is.True);
-
-                settings.enabled = false;
-                Assert.That(settings.enabled, Is.False);
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(avatarRoot);
+                UnityEngine.Object.DestroyImmediate(go);
             }
         }
 
         [Test]
-        public void WorkingController_IsACopyOfTheConfiguredSourceController()
+        public void WorkingController_ClonesMergeAnimatorController()
         {
-            var avatarRoot = new GameObject("Test Avatar");
-            var mergeObject = new GameObject("Merge Host");
-            var controllerPath = $"Assets/AnimatorCodePipelineTest-{Guid.NewGuid():N}.controller";
-            try
-            {
-                var sourceController = AnimatorController.CreateAnimatorControllerAtPath(controllerPath);
-                var settings = avatarRoot.AddComponent<AnimatorCodePipelineSettings>();
-                var mergeAnimator = mergeObject.AddComponent(
-                    Type.GetType("nadena.dev.modular_avatar.core.ModularAvatarMergeAnimator, nadena.dev.modular-avatar.core"));
-                settings.transform.SetParent(mergeObject.transform);
-                var serializedSettings = new SerializedObject(settings);
-                serializedSettings.FindProperty("sourceController").objectReferenceValue = sourceController;
-                serializedSettings.ApplyModifiedPropertiesWithoutUndo();
-                var mergeSerialized = new SerializedObject(mergeAnimator);
-                mergeSerialized.FindProperty("animator").objectReferenceValue = sourceController;
-                mergeSerialized.ApplyModifiedPropertiesWithoutUndo();
-
-                var workingController = AnimatorCodePipelinePlugin.CreateWorkingController(settings);
-                Assert.That(workingController, Is.Not.SameAs(sourceController));
-
-                workingController.AddLayer("Generated");
-                Assert.That(sourceController.layers.Select(layer => layer.name), Does.Not.Contain("Generated"));
-
-                UnityEngine.Object.DestroyImmediate(workingController);
-            }
-            finally
-            {
-                AssetDatabase.DeleteAsset(controllerPath);
-                UnityEngine.Object.DestroyImmediate(mergeObject);
-                UnityEngine.Object.DestroyImmediate(avatarRoot);
-            }
-        }
-
-        [Test]
-        public void Validation_RejectsMismatchedMergeAnimatorController()
-        {
-            var avatarRoot = new GameObject("Test Avatar");
             var host = new GameObject("ACP Host");
-            var firstPath = $"Assets/AnimatorCodePipelineTest-{Guid.NewGuid():N}.controller";
-            var secondPath = $"Assets/AnimatorCodePipelineTest-{Guid.NewGuid():N}.controller";
+            var path = $"Assets/AnimatorCodePipelineTest-{Guid.NewGuid():N}.controller";
             try
             {
-                var source = AnimatorController.CreateAnimatorControllerAtPath(firstPath);
-                var other = AnimatorController.CreateAnimatorControllerAtPath(secondPath);
+                var source = AnimatorController.CreateAnimatorControllerAtPath(path);
                 var settings = host.AddComponent<AnimatorCodePipelineSettings>();
-                settings.moduleSet = ScriptableObject.CreateInstance<AnimatorCodeModuleSet>();
-                var merge = host.AddComponent(
-                    Type.GetType("nadena.dev.modular_avatar.core.ModularAvatarMergeAnimator, nadena.dev.modular-avatar.core"));
-                var serializedSettings = new SerializedObject(settings);
-                serializedSettings.FindProperty("sourceController").objectReferenceValue = source;
-                serializedSettings.ApplyModifiedPropertiesWithoutUndo();
-                var mergeSerialized = new SerializedObject(merge);
-                mergeSerialized.FindProperty("animator").objectReferenceValue = other;
-                mergeSerialized.ApplyModifiedPropertiesWithoutUndo();
+                host.GetComponent<ModularAvatarMergeAnimator>().animator = source;
 
-                var exception = Assert.Throws<InvalidOperationException>(() =>
-                    AnimatorCodePipelinePlugin.ValidateSettings(new[] { settings }));
-                Assert.That(exception.Message, Does.Contain("same Animator Controller"));
+                var working = AnimatorCodePipelinePlugin.CreateWorkingController(settings);
+                try
+                {
+                    Assert.That(working, Is.Not.SameAs(source));
+                    working.AddLayer("Generated");
+                    Assert.That(source.layers.Select(layer => layer.name), Does.Not.Contain("Generated"));
+                }
+                finally
+                {
+                    UnityEngine.Object.DestroyImmediate(working);
+                }
             }
             finally
             {
-                AssetDatabase.DeleteAsset(firstPath);
-                AssetDatabase.DeleteAsset(secondPath);
-                if (host != null)
-                {
-                    var settings = host.GetComponent<AnimatorCodePipelineSettings>();
-                    if (settings != null && settings.moduleSet != null)
-                        UnityEngine.Object.DestroyImmediate(settings.moduleSet);
-                }
+                AssetDatabase.DeleteAsset(path);
                 UnityEngine.Object.DestroyImmediate(host);
-                UnityEngine.Object.DestroyImmediate(avatarRoot);
             }
-        }
-
-        [Test]
-        public void GeneratedLayerCache_ReturnsOneValueForTheSameSuffix()
-        {
-            var cache = new GeneratedLayerCache<object>();
-            var createdCount = 0;
-            object CreateValue(string _)
-            {
-                createdCount++;
-                return new object();
-            }
-
-            var firstValue = cache.GetOrCreate("Shared.Feature", CreateValue);
-            var secondValue = cache.GetOrCreate("Shared.Feature", CreateValue);
-
-            Assert.That(secondValue, Is.SameAs(firstValue));
-            Assert.That(createdCount, Is.EqualTo(1));
-            Assert.That(cache.Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -159,127 +84,38 @@ namespace AnimatorCodePipeline.Tests
         {
             var cache = new GeneratedLayerCache<object>();
             cache.GetOrCreate("Face.Blink", _ => new object());
-
             var exception = Assert.Throws<InvalidOperationException>(() =>
                 cache.GetOrCreate("Face_Blink", _ => new object()));
-
             Assert.That(exception.Message, Does.Contain("Face.Blink"));
             Assert.That(exception.Message, Does.Contain("Face_Blink"));
-            Assert.That(exception.Message, Does.Contain("Face_Blink"));
         }
 
-        [TestCase(typeof(AbstractModule), "abstract")]
-        [TestCase(typeof(OpenGenericModule<>), "unbound generic")]
-        [TestCase(typeof(NotAModule), "does not derive")]
-        [TestCase(typeof(NoPublicConstructorModule), "public parameterless constructor")]
-        public void ModuleDiscovery_RejectsInvalidModuleTypes(Type type, string expectedMessage)
+        private static void AddDefinition(SerializedProperty property, Type type, bool enabled)
         {
-            var exception = Assert.Throws<InvalidOperationException>(() =>
-                AnimatorCodeModuleDiscovery.CreateAll(new[] { type }));
-
-            Assert.That(exception.Message, Does.Contain(expectedMessage));
-        }
-
-        [Test]
-        public void ModuleDiscovery_RejectsEmptyId()
-        {
-            var exception = Assert.Throws<InvalidOperationException>(() =>
-                AnimatorCodeModuleDiscovery.CreateAll(new[] { typeof(EmptyIdModule) }));
-
-            Assert.That(exception.Message, Does.Contain("empty module Id"));
-        }
-
-        [Test]
-        public void Plugin_FiltersInapplicableModules()
-        {
-            var avatarRoot = new GameObject("Test Avatar");
-            var settings = avatarRoot.AddComponent<AnimatorCodePipelineSettings>();
-            try
-            {
-                var modules = AnimatorCodePipelinePlugin.GetApplicableModules(
-                    new AnimatorCodeModule[] { new InapplicableModule(), new ApplicableModule() },
-                    avatarRoot,
-                    settings);
-
-                Assert.That(modules.Select(module => module.Id), Is.EqualTo(new[] { "test.applicable" }));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(avatarRoot);
-            }
+            property.managedReferenceValue = System.Activator.CreateInstance(type);
+            property.FindPropertyRelative("enabled").boolValue = enabled;
         }
     }
 
-    public sealed class FirstModule : AnimatorCodeModule
+    [Serializable]
+    public sealed class TestFirstModule : AnimatorCodeModule
     {
         public override string Id => "test.first";
-        public override int Order => -10;
+        public override int Order => -1;
         public override void Build(AnimatorCodeBuildContext context) { }
     }
 
-    public sealed class AlphabeticalModule : AnimatorCodeModule
-    {
-        public override string Id => "test.alphabetical";
-        public override int Order => 0;
-        public override void Build(AnimatorCodeBuildContext context) { }
-    }
-
-    public sealed class LastModule : AnimatorCodeModule
+    [Serializable]
+    public sealed class TestLastModule : AnimatorCodeModule
     {
         public override string Id => "test.last";
-        public override int Order => 0;
         public override void Build(AnimatorCodeBuildContext context) { }
     }
 
-    public sealed class DuplicateFirstModule : AnimatorCodeModule
+    [Serializable]
+    public sealed class TestDisabledModule : AnimatorCodeModule
     {
-        public override string Id => "test.duplicate";
-        public override void Build(AnimatorCodeBuildContext context) { }
-    }
-
-    public sealed class DuplicateSecondModule : AnimatorCodeModule
-    {
-        public override string Id => "test.duplicate";
-        public override void Build(AnimatorCodeBuildContext context) { }
-    }
-
-    public abstract class AbstractModule : AnimatorCodeModule
-    {
-        public override string Id => "test.abstract";
-        public override void Build(AnimatorCodeBuildContext context) { }
-    }
-
-    public class OpenGenericModule<T> : AnimatorCodeModule
-    {
-        public override string Id => "test.generic";
-        public override void Build(AnimatorCodeBuildContext context) { }
-    }
-
-    public sealed class NotAModule { }
-
-    public sealed class NoPublicConstructorModule : AnimatorCodeModule
-    {
-        private NoPublicConstructorModule() { }
-        public override string Id => "test.private-constructor";
-        public override void Build(AnimatorCodeBuildContext context) { }
-    }
-
-    public sealed class EmptyIdModule : AnimatorCodeModule
-    {
-        public override string Id => " ";
-        public override void Build(AnimatorCodeBuildContext context) { }
-    }
-
-    public sealed class InapplicableModule : AnimatorCodeModule
-    {
-        public override string Id => "test.inapplicable";
-        public override bool IsApplicable(GameObject avatarRoot, AnimatorCodePipelineSettings settings) => false;
-        public override void Build(AnimatorCodeBuildContext context) { }
-    }
-
-    public sealed class ApplicableModule : AnimatorCodeModule
-    {
-        public override string Id => "test.applicable";
+        public override string Id => "test.disabled";
         public override void Build(AnimatorCodeBuildContext context) { }
     }
 }

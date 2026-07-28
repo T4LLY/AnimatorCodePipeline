@@ -1,12 +1,15 @@
 {
   "name": "com.github.t4lly.animator-code-pipeline",
   "displayName": "Animator Code Pipeline",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "unity": "2022.3",
+  "icon": "icon.png",
   "description": "A thin NDMF pipeline that builds explicitly selected Animator As Code modules and merges their generated controllers through Modular Avatar.",
   "license": "MIT",
   "author": {
-    "name": "Animator Code Pipeline contributors"
+    "name": "T4LLY",
+    "email": "105340992+T4LLY@users.noreply.github.com",
+    "url": "https://github.com/T4LLY"
   },
   "vpmDependencies": {
     "com.vrchat.avatars": ">=3.5.2 <999.0.0-a",

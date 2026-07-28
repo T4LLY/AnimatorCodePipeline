@@ -51,26 +51,24 @@ flowchart TB
 ```text
 Avatar
 └── AnimatorCodePipeline
-    ├── Animator Code Pipeline Settings
-    ├── Source Controller (regular AnimatorController asset)
+    ├── Animator Code Pipeline
     ├── Modular Avatar Merge Animator
-    ├── Modular Avatar Parameters (when registering generated parameters)
-    ├── Modular Avatar Menu Item (Optional)
-    └── Modular Avatar Menu Installer (Optional)
+    ├── Modular Avatar Parameters (パラメーター登録が必要な時だけ)
+    ├── Modular Avatar Menu Item (メニューが必要な時だけ)
+    └── Modular Avatar Menu Installer (メニューが必要な時だけ)
 ```
 
 ### AnimatorCodePipelineSettings
 - **Animator Code Pipelineのメインコンポーネントです。**
 - どのModuleを使うかを指定するためのコンポーネントです。
-- `AnimatorCodeModuleSet`を設定すると、その中に登録されたModuleがビルド時に使用されます。
-- `Source Controller`には、プロジェクト内の通常の`AnimatorController`を設定します。
-- 同じGameObjectの`ModularAvatarMergeAnimator`にも、同じControllerを設定してください。
+- `AnimatorCodeModuleSet`を設定すると、その中に登録されたSerializeReference Module定義がビルド時に使用されます。
 
 ### Modular Avatar Merge Animator
 - **Modular Avatarに付属するコンポーネントです。**
 - 生成されたAnimator Controllerを、FXやGestureなどのVRChat Playable Layerへ非破壊で統合するために使用します。
 - どのPlayable Layerへ統合するかは、Modular Avatar Merge Animator側で設定します。
-- ACPの通常構成では、同じGameObjectにあるSource Controllerを参照し、生成後のControllerはNDMFビルドクローン側だけに割り当てられます。
+- ACPはMerge AnimatorのAnimatorをSource of Truthとして読み取り、ビルド中にcloneします。生成後のControllerはNDMFビルドクローン側だけに割り当てられます。
+- Controller、Playable Layer、Path Mode、Relative Path Root、Layer PriorityはMerge Animator側で設定します。
 
 ### Modular Avatar Parameters
 - **Modular Avatarに付属するコンポーネントです。**

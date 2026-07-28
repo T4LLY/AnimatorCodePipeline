@@ -16,7 +16,7 @@ namespace AnimatorCodePipeline
     /// </summary>
     public sealed class AnimatorCodePipelinePlugin : Plugin<AnimatorCodePipelinePlugin>
     {
-        public override string QualifiedName => "dev.animatorcode.pipeline";
+        public override string QualifiedName => "com.github.t4lly.animator-code-pipeline";
         public override string DisplayName => "Animator Code Pipeline";
 
         protected override void Configure()
@@ -51,46 +51,22 @@ namespace AnimatorCodePipeline
                 if (settings.moduleSet as AnimatorCodeModuleSet == null)
                 {
                     throw new InvalidOperationException(
-                        $"Animator Code Pipeline Settings on '{settings.name}' requires an AnimatorCodeModuleSet asset.");
+                        $"Animator Code Pipeline on '{settings.name}' requires an AnimatorCodeModuleSet asset.");
                 }
 
-                if (settings.SourceController == null)
-                {
+                var mergeAnimator = settings.GetComponent<ModularAvatarMergeAnimator>();
+                if (mergeAnimator == null)
                     throw new InvalidOperationException(
-                        $"Animator Code Pipeline Settings on '{settings.name}' requires a Source Controller.");
-                }
-
-                if (!(settings.SourceController is AnimatorController))
-                {
-                    throw new InvalidOperationException(
-                        $"Animator Code Pipeline Source Controller on '{settings.name}' must be a regular AnimatorController, not an AnimatorOverrideController.");
-                }
-
-                var mergeAnimators = settings.GetComponents<ModularAvatarMergeAnimator>();
-                if (mergeAnimators.Length == 0)
-                {
-                    throw new InvalidOperationException(
-                        $"Animator Code Pipeline Settings on '{settings.name}' requires an MA Merge Animator on the same GameObject.");
-                }
-
-                if (mergeAnimators.Length > 1)
-                {
-                    throw new InvalidOperationException(
-                        $"Animator Code Pipeline Settings on '{settings.name}' has multiple MA Merge Animators and cannot choose one unambiguously.");
-                }
-
-                var mergeAnimator = mergeAnimators[0];
+                        $"Animator Code Pipeline on '{settings.name}' requires an MA Merge Animator on the same GameObject.");
                 if (mergeAnimator.animator == null)
                 {
                     throw new InvalidOperationException(
                         $"MA Merge Animator on '{settings.name}' requires an Animator Controller.");
                 }
 
-                if (mergeAnimator.animator != settings.SourceController)
-                {
+                if (!(mergeAnimator.animator is AnimatorController))
                     throw new InvalidOperationException(
-                        $"ACP Source Controller and MA Merge Animator Animator on '{settings.name}' must reference the same Animator Controller.");
-                }
+                        $"MA Merge Animator on '{settings.name}' must reference a regular AnimatorController, not an AnimatorOverrideController.");
             }
         }
 
@@ -101,13 +77,13 @@ namespace AnimatorCodePipeline
             if (moduleSet == null)
             {
                 throw new InvalidOperationException(
-                    $"Animator Code Pipeline Settings on '{settings.name}' requires a Module Set.");
+                    $"Animator Code Pipeline on '{settings.name}' requires a Module Set.");
             }
 
             if (settings.GetComponent<ModularAvatarMergeAnimator>() == null)
             {
                 throw new InvalidOperationException(
-                    $"Animator Code Pipeline Settings on '{settings.name}' requires an MA Merge Animator on the same GameObject.");
+                    $"Animator Code Pipeline on '{settings.name}' requires an MA Merge Animator on the same GameObject.");
             }
 
             var modules = moduleSet.CreateModules();
@@ -119,10 +95,15 @@ namespace AnimatorCodePipeline
                 settings);
             if (applicableModules.Count == 0) return;
 
+            var mergeAnimator = settings.GetComponent<ModularAvatarMergeAnimator>();
+            var bindingRoot = GetBindingRoot(ctx, settings, mergeAnimator);
+            var generatedController = CreateWorkingController(settings);
+            ctx.AssetSaver.SaveAsset(generatedController);
+
             var aac = AacV1.Create(new AacConfiguration
             {
                 SystemName = "AnimatorCodePipeline",
-                AnimatorRoot = ctx.AvatarRootTransform,
+                AnimatorRoot = bindingRoot,
                 DefaultValueRoot = ctx.AvatarRootTransform,
                 AssetKey = GUID.Generate().ToString(),
                 AssetContainer = ctx.AssetContainer,
@@ -131,9 +112,8 @@ namespace AnimatorCodePipeline
                 DefaultsProvider = new AacDefaultsProvider(false)
             });
 
-            var generatedController = CreateWorkingController(settings);
-            ctx.AssetSaver.SaveAsset(generatedController);
-            var buildContext = new AnimatorCodeBuildContext(ctx, settings, aac, generatedController);
+            var buildContext = new AnimatorCodeBuildContext(
+                ctx, settings, aac, generatedController, bindingRoot);
 
             foreach (var module in applicableModules)
             {
@@ -188,17 +168,30 @@ namespace AnimatorCodePipeline
 
         internal static AnimatorController CreateWorkingController(AnimatorCodePipelineSettings settings)
         {
-            if (settings.SourceController == null)
+            var mergeAnimator = settings == null ? null : settings.GetComponent<ModularAvatarMergeAnimator>();
+            if (mergeAnimator == null || mergeAnimator.animator == null)
                 throw new InvalidOperationException(
-                    "Animator Code Pipeline requires a Source Controller assigned.");
+                    "Animator Code Pipeline requires an MA Merge Animator with an Animator Controller.");
 
-            if (!(settings.SourceController is AnimatorController sourceController))
+            if (!(mergeAnimator.animator is AnimatorController sourceController))
                 throw new InvalidOperationException(
-                    "Animator Code Pipeline Source Controller must be a regular AnimatorController, not an Animator Override Controller.");
+                    "Animator Code Pipeline MA Merge Animator must reference a regular AnimatorController, not an Animator Override Controller.");
 
             var workingController = UnityEngine.Object.Instantiate(sourceController);
             workingController.name = $"{sourceController.name} [AnimatorCodePipeline Build]";
             return workingController;
+        }
+
+        internal static Transform GetBindingRoot(
+            BuildContext context,
+            AnimatorCodePipelineSettings settings,
+            ModularAvatarMergeAnimator mergeAnimator)
+        {
+            if (mergeAnimator.pathMode == MergeAnimatorPathMode.Absolute)
+                return context.AvatarRootTransform;
+
+            var root = mergeAnimator.relativePathRoot.Get(context.AvatarRootTransform);
+            return root != null ? root.transform : settings.transform;
         }
     }
 }

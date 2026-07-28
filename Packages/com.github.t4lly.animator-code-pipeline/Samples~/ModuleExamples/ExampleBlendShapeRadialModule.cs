@@ -1,3 +1,4 @@
+using System;
 using AnimatorAsCode.V1;
 using UnityEngine;
 
@@ -9,6 +10,7 @@ namespace ProjectAnimatorCode.Samples
     // - Simple 1D Blend Tree
     // - Modular Avatar parameter registration
     // - Radial menu item
+    [Serializable]
     public sealed class ExampleBlendShapeRadialModule : AnimatorCodePipeline.AnimatorCodeModule
     {
         public override string Id => "sample.blend-shape-radial";

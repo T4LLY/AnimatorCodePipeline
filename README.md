@@ -1,5 +1,7 @@
 # Animator Code Pipeline
-
+<p align="center">
+  <img src="./logo.svg" width="160" alt="Animator Code Pipeline">
+</p>
 Animator Code Pipelineは、VRChatアバターのAnimator機能をC#コードで作るためのUnityパッケージです。
 
 - 衣装の切り替えや表情、BlendShape、オブジェクトの動作をコードで作成

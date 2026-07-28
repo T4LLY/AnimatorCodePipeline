@@ -23,7 +23,7 @@ namespace AnimatorCodePipeline
             if (selected.GetComponent<VRCAvatarDescriptor>() == null)
             {
                 Debug.LogWarning("The selected GameObject does not have a VRCAvatarDescriptor. " +
-                                 "Animator Code Pipeline Settings should normally be placed on the avatar root.");
+                                 "Animator Code Pipeline should normally be placed on the avatar root.");
             }
 
             var existing = selected.GetComponent<AnimatorCodePipelineSettings>();

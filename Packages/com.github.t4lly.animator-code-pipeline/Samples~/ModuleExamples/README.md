@@ -2,21 +2,20 @@
 
 These are learning examples, not additional required templates.
 
-Copy or import the sample, replace every `REPLACE/...` value, then add only the modules you want to an `AnimatorCodeModuleSet`.
+Copy or import the sample, replace every `REPLACE/...` value, then add only the definitions you want to an `AnimatorCodeModuleSet`.
 
 ## Host setup
 
 These examples define generated Animator content only. Configure the avatar host separately:
 
 - Add `AnimatorCodePipelineSettings` to the feature host.
-- Assign a project-owned regular `AnimatorController` to its `Source Controller` field.
-- Add exactly one `ModularAvatarMergeAnimator` to the same host and assign the same controller.
+- Add exactly one `ModularAvatarMergeAnimator` to the same host and assign its regular source `AnimatorController`.
 - Configure the Merge Animator playable layer, normally `FX`, and use `Absolute` path mode unless a verified relative path root is required.
-- A local Unity `Animator` component is not required. Do not use the avatar root Animator as the Source Controller.
+- ACP does not use a local Unity `Animator`; the Merge Animator owns the controller configuration.
 - Register generated expression parameters with `ModularAvatarParameters` when the feature exposes parameters to the avatar.
 - Configure menu components separately or on the same host. They do not need to be separate GameObjects.
 
-The Source Controller is only a project-owned template. ACP clones it during the NDMF build and does not modify the authored controller or the avatar root FX controller.
+ACP clones the Merge Animator controller during the NDMF build and does not modify the authored controller or the avatar root FX controller.
 
 ## Examples
 

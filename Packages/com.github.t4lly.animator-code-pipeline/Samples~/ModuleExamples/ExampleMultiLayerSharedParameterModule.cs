@@ -1,3 +1,4 @@
+using System;
 using AnimatorAsCode.V1;
 
 namespace ProjectAnimatorCode.Samples
@@ -6,6 +7,7 @@ namespace ProjectAnimatorCode.Samples
     // - One module coordinating multiple generated layers
     // - Reusing the same Animator parameter name across layers
     // - One module inspecting multiple avatar objects
+    [Serializable]
     public sealed class ExampleMultiLayerSharedParameterModule : AnimatorCodePipeline.AnimatorCodeModule
     {
         public override string Id => "sample.multi-layer-shared-parameter";

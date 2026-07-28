@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using AnimatorAsCode.V1;
 using AnimatorAsCode.V1.ModularAvatar;
 using nadena.dev.ndmf;
@@ -17,6 +18,7 @@ namespace AnimatorCodePipeline
         private readonly GeneratedLayerCache<AacFlLayer> _layers =
             new GeneratedLayerCache<AacFlLayer>();
         private readonly AnimatorController _workingController;
+        private readonly Transform _bindingRoot;
 
         private GameObject _generatedRoot;
         private MaAc _modularAvatar;
@@ -25,12 +27,14 @@ namespace AnimatorCodePipeline
             BuildContext ndmfContext,
             AnimatorCodePipelineSettings settings,
             AacFlBase aac,
-            AnimatorController workingController)
+            AnimatorController workingController,
+            Transform bindingRoot)
         {
             NdmfContext = ndmfContext ?? throw new ArgumentNullException(nameof(ndmfContext));
             Settings = settings ?? throw new ArgumentNullException(nameof(settings));
             Aac = aac ?? throw new ArgumentNullException(nameof(aac));
             _workingController = workingController ?? throw new ArgumentNullException(nameof(workingController));
+            _bindingRoot = bindingRoot ?? throw new ArgumentNullException(nameof(bindingRoot));
         }
 
         public BuildContext NdmfContext { get; }
@@ -38,6 +42,18 @@ namespace AnimatorCodePipeline
         public AacFlBase Aac { get; }
         public GameObject AvatarRoot => NdmfContext.AvatarRootObject;
         public Transform AvatarRootTransform => NdmfContext.AvatarRootTransform;
+        public Transform BindingRoot => _bindingRoot;
+
+        /// <summary>Returns the animation binding path using the active MA Merge Animator path root.</summary>
+        public string Path(Transform target)
+        {
+            if (target == null) throw new ArgumentNullException(nameof(target));
+            if (!target.IsChildOf(_bindingRoot))
+                throw new InvalidOperationException(
+                    "Animator Code Pipeline target is outside the active relative path root. " +
+                    "Use an Absolute MA Merge Animator path mode or move the target under the relative root.");
+            return RelativePath(_bindingRoot, target);
+        }
 
         /// <summary>
         /// Gets a generated layer in the build-only clone of the configured Animator Controller.
@@ -101,7 +117,7 @@ namespace AnimatorCodePipeline
             var mergeAnimator = Settings.GetComponent<ModularAvatarMergeAnimator>();
             if (mergeAnimator == null)
                 throw new InvalidOperationException(
-                    $"Animator Code Pipeline Settings on '{Settings.name}' requires an MA Merge Animator on the same GameObject.");
+                    $"Animator Code Pipeline on '{Settings.name}' requires an MA Merge Animator on the same GameObject.");
 
             mergeAnimator.animator = _workingController;
         }
@@ -116,6 +132,26 @@ namespace AnimatorCodePipeline
                 _generatedRoot.transform.SetParent(Settings.transform, false);
                 return _generatedRoot;
             }
+        }
+
+        public Transform RequireTransform(AnimatorCodeObjectReference reference)
+        {
+            if (reference == null) throw new ArgumentNullException(nameof(reference));
+            var target = reference.Resolve(AvatarRoot);
+            if (target == null)
+                throw new InvalidOperationException("Animator Code Pipeline could not resolve the configured avatar object reference.");
+            return target.transform;
+        }
+
+        private static string RelativePath(Transform root, Transform target)
+        {
+            if (root == target) return "";
+            if (!target.IsChildOf(root))
+                throw new InvalidOperationException("The target is not a child of the active binding root.");
+            var parts = new Stack<string>();
+            for (var current = target; current != null && current != root; current = current.parent)
+                parts.Push(current.name);
+            return string.Join("/", parts.ToArray());
         }
     }
 }

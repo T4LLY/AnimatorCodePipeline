@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 - 2026-07-28
+
+### Changed
+
+- ACP Settings now stores only a Module Set; Modular Avatar Merge Animator is the source of truth for controller and merge settings.
+- Module Sets now store enabled, serializable module definitions and user configuration directly.
+- Generated bindings use the Merge Animator path mode and relative path root.
+
 ## 0.1.2 - 2026-07-27
 
 - Replaced the required Target Animator configuration with an explicit Source Controller asset.

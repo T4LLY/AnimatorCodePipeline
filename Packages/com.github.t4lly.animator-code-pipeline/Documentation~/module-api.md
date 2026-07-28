@@ -102,7 +102,7 @@ Modules are ordered deterministically by:
 2. `Id`;
 3. fully qualified type name.
 
-The order in which scripts appear inside `AnimatorCodeModuleSet` is not the execution order.
+The order in which definitions appear inside `AnimatorCodeModuleSet` is not the execution order.
 
 Use `Order` only when a real dependency or sequencing requirement exists.
 
@@ -194,17 +194,17 @@ This fail-fast behavior is intentional: a Module Set should describe the code th
 
 ## 4. `AnimatorCodeModuleSet`
 
-`AnimatorCodeModuleSet` is an Editor-only ScriptableObject used to explicitly select project modules.
+`AnimatorCodeModuleSet` is an Editor-only ScriptableObject used to select serializable project module definitions.
 
 It is an execution configuration, not an automatic discovery mechanism.
 
-A Module Set contains references to compiled `AnimatorCodeModule` scripts.
+A Module Set contains `[SerializeReference]` `AnimatorCodeModule` definitions, including user-adjustable configuration.
 
 ```text
 AnimatorCodeModuleSet
-├── ClothesModule
-├── PropsModule
-└── FaceModule
+├── ClothesModuleDefinition
+├── PropsModuleDefinition
+└── FaceModuleDefinition
 ```
 
 The same Module Set may be referenced by multiple Settings components.

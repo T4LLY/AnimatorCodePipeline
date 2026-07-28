@@ -1,3 +1,4 @@
+using System;
 using AnimatorAsCode.V1;
 
 namespace ProjectAnimatorCode.Samples
@@ -7,6 +8,7 @@ namespace ProjectAnimatorCode.Samples
     // - Multiple required avatar objects
     // - One-of-many state selection
     // - Modular Avatar parameter registration
+    [Serializable]
     public sealed class ExampleIntSelectorModule : AnimatorCodePipeline.AnimatorCodeModule
     {
         public override string Id => "sample.int-selector";

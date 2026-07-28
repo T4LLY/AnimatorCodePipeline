@@ -34,7 +34,7 @@ Required package ranges are declared in `package.json` under `vpmDependencies`.
 
 ## First use
 
-1. Put `AnimatorCodePipelineSettings` on the avatar root.
+1. Put the **Animator Code Pipeline** component on the avatar root.
 2. Run **Tools > Animator Code Pipeline > Create Git-managed Module Folder**.
 3. Add project modules under `Assets/AnimatorCodePipeline/Editor/`.
 4. Each module derives from `AnimatorCodeModule`.

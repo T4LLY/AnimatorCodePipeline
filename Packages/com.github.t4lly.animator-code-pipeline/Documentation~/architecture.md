@@ -72,13 +72,12 @@ An avatar may contain zero, one, or multiple enabled Settings components.
 Each Settings component associates:
 
 * a Module Set;
-* an explicit project-owned regular `Source Controller` asset;
-* exactly one same-host `ModularAvatarMergeAnimator` referencing that same controller;
+* exactly one same-host `ModularAvatarMergeAnimator`;
 * one temporary working controller created during the build.
 
-The Source Controller is configured directly on `AnimatorCodePipelineSettings`. A local
-`Animator` component is not required, and the avatar root Animator is not used as a
-fallback. `AnimatorOverrideController` assets are rejected.
+The Merge Animator is the source of truth for the regular source controller, playable
+layer, path mode, relative path root, and layer priority. `AnimatorOverrideController`
+assets are rejected.
 
 A Settings component is a configuration boundary, not a feature component and not a processor invocation unit.
 
@@ -88,7 +87,7 @@ Multiple project modules may execute within the same Settings component and coop
 
 Animator Code Pipeline does not directly merge generated Animator logic into the avatar's playable-layer Controllers.
 
-After module generation, the temporary working controller is assigned to the existing `ModularAvatarMergeAnimator` on the Settings GameObject in the avatar build clone.
+After module generation, the temporary working controller is assigned only to the build-clone `ModularAvatarMergeAnimator` on the Settings GameObject.
 
 Modular Avatar then virtualizes and merges that controller through its normal NDMF pipeline.
 
