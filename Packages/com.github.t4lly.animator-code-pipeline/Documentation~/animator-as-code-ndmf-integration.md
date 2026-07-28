@@ -45,7 +45,7 @@ Within one Settings configuration:
 
 1. the selected modules are loaded and validated;
 2. applicable modules are evaluated;
-3. a temporary working Animator Controller is created for the build;
+3. the same-host Merge Animator controller is cloned into a temporary working Animator Controller for the build;
 4. modules generate Animator logic through Animator As Code;
 5. modules may share generated layers through `context.Layer(...)`;
 6. the Settings component's existing `ModularAvatarMergeAnimator` determines the target VRChat playable layer;

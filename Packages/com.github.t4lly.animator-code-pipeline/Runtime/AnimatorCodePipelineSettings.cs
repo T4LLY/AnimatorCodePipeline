@@ -1,3 +1,4 @@
+using nadena.dev.modular_avatar.core;
 using UnityEngine;
 using VRC.SDKBase;
 
@@ -8,6 +9,7 @@ namespace AnimatorCodePipeline
     /// This component is editor-only because it configures an NDMF build.
     /// </summary>
     [DisallowMultipleComponent]
+    [RequireComponent(typeof(ModularAvatarMergeAnimator))]
     [AddComponentMenu("Animator Code Pipeline")]
     [Icon("Packages/com.github.t4lly.animator-code-pipeline/icon.png")]
     public sealed class AnimatorCodePipelineSettings : MonoBehaviour, IEditorOnly

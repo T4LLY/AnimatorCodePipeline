@@ -71,7 +71,7 @@ namespace AnimatorCodePipeline
 
             if (merge.animator == null)
             {
-                EditorGUILayout.HelpBox("Assign the source Animator Controller on the Merge Animator.", MessageType.Error);
+                EditorGUILayout.HelpBox("Assign an Animator Controller on the Merge Animator.", MessageType.Error);
             }
             else if (!(merge.animator is AnimatorController))
             {

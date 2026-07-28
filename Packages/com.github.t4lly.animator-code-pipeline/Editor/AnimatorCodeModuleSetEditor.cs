@@ -61,12 +61,12 @@ namespace AnimatorCodePipeline
 
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("New Module..."))
-                AnimatorCodeModuleGenerator.Create(serializedObject, modules, moduleSet);
+                AnimatorCodeModuleGenerator.Create(moduleSet);
             if (GUILayout.Button("Add Module Definition"))
             {
                 var menu = new GenericMenu();
                 var types = TypeCache.GetTypesDerivedFrom<AnimatorCodeModule>()
-                    .Where(type => !type.IsAbstract && !type.ContainsGenericParameters)
+                    .Where(type => !type.IsAbstract && !type.ContainsGenericParameters && type.GetConstructor(Type.EmptyTypes) != null)
                     .OrderBy(type => type.FullName, StringComparer.Ordinal)
                     .ToArray();
                 foreach (var type in types)
@@ -83,7 +83,7 @@ namespace AnimatorCodePipeline
             serializedObject.ApplyModifiedProperties();
             try
             {
-                var count = moduleSet.CreateModules().Count;
+                var count = moduleSet.ValidateDefinitions();
                 if (count == 0)
                     EditorGUILayout.HelpBox("This Module Set is empty. ACP will perform no work.", MessageType.Warning);
             }
@@ -131,17 +131,16 @@ namespace AnimatorCodePipeline
     {
         private const string PendingModuleSetKey = "AnimatorCodePipeline.NewModule.ModuleSet";
         private const string PendingScriptKey = "AnimatorCodePipeline.NewModule.Script";
+        private const string PendingAttemptKey = "AnimatorCodePipeline.NewModule.Attempt";
         private const string FolderKeyPrefix = "AnimatorCodePipeline.NewModule.Folder.";
+        private const int MaxRegistrationAttempts = 10;
 
         static AnimatorCodeModuleGenerator()
         {
             EditorApplication.delayCall += TryRegisterPendingModule;
         }
 
-        internal static void Create(
-            SerializedObject serializedObject,
-            SerializedProperty modules,
-            AnimatorCodeModuleSet moduleSet)
+        internal static void Create(AnimatorCodeModuleSet moduleSet)
         {
             var folderKey = FolderKeyPrefix + Application.dataPath;
             var rememberedFolder = EditorPrefs.GetString(folderKey, "Assets");
@@ -173,6 +172,7 @@ namespace AnimatorCodePipeline
             EditorPrefs.SetString(folderKey, folder);
             SessionState.SetString(PendingModuleSetKey, AssetDatabase.GetAssetPath(moduleSet));
             SessionState.SetString(PendingScriptKey, scriptPath);
+            SessionState.SetInt(PendingAttemptKey, 0);
             AssetDatabase.Refresh();
             EditorApplication.delayCall += TryRegisterPendingModule;
         }
@@ -188,12 +188,32 @@ namespace AnimatorCodePipeline
             var type = script == null ? null : script.GetClass();
             if (type == null)
             {
-                EditorApplication.delayCall += TryRegisterPendingModule;
+                if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+                {
+                    EditorApplication.delayCall += TryRegisterPendingModule;
+                    return;
+                }
+
+                var attempt = SessionState.GetInt(PendingAttemptKey, 0) + 1;
+                if (!EditorUtility.scriptCompilationFailed && attempt < MaxRegistrationAttempts)
+                {
+                    SessionState.SetInt(PendingAttemptKey, attempt);
+                    EditorApplication.delayCall += TryRegisterPendingModule;
+                    return;
+                }
+
+                Debug.LogWarning(
+                    $"Animator Code Pipeline could not register the generated module '{scriptPath}'. " +
+                    "Fix any compile errors, then add the module definition from the Module Set Inspector.");
+                ClearPending();
                 return;
             }
 
-            if (!typeof(AnimatorCodeModule).IsAssignableFrom(type) || type.IsAbstract)
+            if (!typeof(AnimatorCodeModule).IsAssignableFrom(type) || type.IsAbstract ||
+                type.ContainsGenericParameters || type.GetConstructor(Type.EmptyTypes) == null)
             {
+                Debug.LogError(
+                    $"Animator Code Pipeline generated type '{type.FullName}' is not a concrete module with a public parameterless constructor.");
                 ClearPending();
                 return;
             }
@@ -230,6 +250,7 @@ namespace AnimatorCodePipeline
         {
             SessionState.EraseString(PendingModuleSetKey);
             SessionState.EraseString(PendingScriptKey);
+            SessionState.EraseInt(PendingAttemptKey);
         }
 
         private static string ToAbsolutePath(string projectPath)
@@ -243,20 +264,59 @@ namespace AnimatorCodePipeline
             var assetsDirectory = new DirectoryInfo(Application.dataPath);
             while (directory != null && directory.FullName.StartsWith(assetsDirectory.FullName, StringComparison.OrdinalIgnoreCase))
             {
-                if (File.Exists(Path.Combine(directory.FullName, "AnimatorCodePipeline.Editor.asmref")))
+                var assemblyReferences = directory.GetFiles("*.asmref");
+                if (assemblyReferences.Any(ReferencesAnimatorCodePipelineEditor))
                     return;
-                if (directory.GetFiles("*.asmdef").Length != 0)
+                if (assemblyReferences.Length != 0)
+                {
+                    Debug.LogWarning(
+                        $"Animator Code Pipeline module folder is already controlled by '{assemblyReferences[0].Name}'. " +
+                        "Ensure that referenced assembly depends on AnimatorCodePipeline.Editor before compiling the generated module.");
                     return;
+                }
+
+                var assemblyDefinitions = directory.GetFiles("*.asmdef");
+                if (assemblyDefinitions.Length != 0)
+                {
+                    Debug.LogWarning(
+                        $"Animator Code Pipeline module folder is already controlled by '{assemblyDefinitions[0].Name}'. " +
+                        "Ensure that assembly references AnimatorCodePipeline.Editor before compiling the generated module.");
+                    return;
+                }
                 if (directory.FullName.Equals(assetsDirectory.FullName, StringComparison.OrdinalIgnoreCase))
                     break;
                 directory = directory.Parent;
             }
 
             var asmrefPath = folder + "/AnimatorCodePipeline.Editor.asmref";
-            if (!File.Exists(ToAbsolutePath(asmrefPath)))
+            File.Copy(GetTemplatePath("AnimatorCodePipeline.Editor.asmref"), ToAbsolutePath(asmrefPath));
+        }
+
+        private static bool ReferencesAnimatorCodePipelineEditor(FileInfo asmref)
+        {
+            try
             {
-                File.Copy(GetTemplatePath("AnimatorCodePipeline.Editor.asmref"), ToAbsolutePath(asmrefPath));
+                var data = JsonUtility.FromJson<AssemblyReferenceData>(File.ReadAllText(asmref.FullName));
+                if (data == null || string.IsNullOrWhiteSpace(data.reference))
+                    return false;
+
+                if (data.reference == "AnimatorCodePipeline.Editor")
+                    return true;
+
+                var editorAssemblyGuid = AssetDatabase.AssetPathToGUID(
+                    "Packages/com.github.t4lly.animator-code-pipeline/Editor/AnimatorCodePipeline.Editor.asmdef");
+                return !string.IsNullOrEmpty(editorAssemblyGuid) && data.reference == "GUID:" + editorAssemblyGuid;
             }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        [Serializable]
+        private sealed class AssemblyReferenceData
+        {
+            public string reference;
         }
 
         private static string MakeClassName(string value)

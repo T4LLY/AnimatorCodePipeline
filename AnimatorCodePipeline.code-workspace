@@ -23,6 +23,7 @@
       "ProjectSettings": true,
       "UserSettings": true,
 
+      "CHANGELOG.md": true,
       "Packages/com.vrchat.avatars": true,
       "Packages/com.vrchat.base": true,
       "Packages/dev.hai-vr.animator-as-code.v1": true,

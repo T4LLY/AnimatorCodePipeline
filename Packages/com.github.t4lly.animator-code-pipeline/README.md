@@ -4,7 +4,7 @@ Animator Code Pipeline is a thin, code-first bridge between:
 
 - NDMF for non-destructive build execution
 - Animator As Code V1 for controller/clip generation
-- Modular Avatar As Code for merge registration and parameters
+- Modular Avatar / Modular Avatar As Code for controller integration, parameters, and menus
 - Git for source-of-truth history
 - Unity MCP / coding agents for project inspection and code editing
 
@@ -34,10 +34,12 @@ Required package ranges are declared in `package.json` under `vpmDependencies`.
 
 ## First use
 
-1. Put the **Animator Code Pipeline** component on the avatar root.
-2. Run **Tools > Animator Code Pipeline > Create Git-managed Module Folder**.
-3. Add project modules under `Assets/AnimatorCodePipeline/Editor/`.
-4. Each module derives from `AnimatorCodeModule`.
-5. Enter Play Mode or build the avatar. NDMF invokes the pipeline.
+1. Create or choose a feature-host GameObject under the avatar, then add **Animator Code Pipeline**. A same-host **MA Merge Animator** is required and is added automatically by Unity.
+2. Configure the MA Merge Animator controller, playable layer, and path settings.
+3. Create or assign an `AnimatorCodeModuleSet` on ACP Settings.
+4. Run **Tools > Animator Code Pipeline > Create Git-managed Module Folder**.
+5. Add project modules under `Assets/AnimatorCodePipeline/Editor/`.
+6. Each module derives from `AnimatorCodeModule` and is added to a Module Set.
+7. Enter Play Mode or build the avatar. NDMF invokes the pipeline.
 
 See `Documentation~/architecture.md` and the bundled Skill.

@@ -24,7 +24,7 @@ namespace AnimatorCodePipeline.Tests
                 AddDefinition(modules.GetArrayElementAtIndex(2), typeof(TestFirstModule), true);
                 serialized.ApplyModifiedPropertiesWithoutUndo();
 
-                Assert.That(set.CreateModules().Select(module => module.Id),
+                Assert.That(set.CreateModuleInstances().Select(module => module.Id),
                     Is.EqualTo(new[] { "test.first", "test.last" }));
             }
             finally
@@ -34,13 +34,13 @@ namespace AnimatorCodePipeline.Tests
         }
 
         [Test]
-        public void Settings_DoesNotCreateMergeAnimatorDependency()
+        public void Settings_RequiresMergeAnimator()
         {
             var go = new GameObject("ACP Settings");
             try
             {
                 var settings = go.AddComponent<AnimatorCodePipelineSettings>();
-                Assert.That(go.GetComponent<ModularAvatarMergeAnimator>(), Is.Null);
+                Assert.That(go.GetComponent<ModularAvatarMergeAnimator>(), Is.Not.Null);
                 Assert.That(settings.enabled, Is.True);
             }
             finally
@@ -80,14 +80,105 @@ namespace AnimatorCodePipeline.Tests
         }
 
         [Test]
-        public void GeneratedLayerCache_RejectsNormalizedSuffixCollision()
+        public void GeneratedLayerCache_SharesExactSuffix()
         {
             var cache = new GeneratedLayerCache<object>();
-            cache.GetOrCreate("Face.Blink", _ => new object());
-            var exception = Assert.Throws<InvalidOperationException>(() =>
-                cache.GetOrCreate("Face_Blink", _ => new object()));
-            Assert.That(exception.Message, Does.Contain("Face.Blink"));
-            Assert.That(exception.Message, Does.Contain("Face_Blink"));
+            var first = cache.GetOrCreate("Face.Blink", _ => new object());
+            var second = cache.GetOrCreate("Face.Blink", _ => new object());
+
+            Assert.That(second, Is.SameAs(first));
+            Assert.That(cache.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void GeneratedLayerCache_DotAndUnderscoreSuffixesRemainDistinct()
+        {
+            var cache = new GeneratedLayerCache<object>();
+            var dotted = cache.GetOrCreate("Face.Blink", _ => new object());
+            var underscored = cache.GetOrCreate("Face_Blink", _ => new object());
+
+            Assert.That(underscored, Is.Not.SameAs(dotted));
+            Assert.That(cache.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ObjectReference_StoresAvatarRelativePathAndResolvesPerAvatar()
+        {
+            var avatarA = new GameObject("Avatar A");
+            var avatarB = new GameObject("Avatar B");
+            try
+            {
+                var targetA = new GameObject("Target");
+                targetA.transform.SetParent(avatarA.transform, false);
+                var targetB = new GameObject("Target");
+                targetB.transform.SetParent(avatarB.transform, false);
+
+                var reference = new AnimatorCodeObjectReference();
+                reference.Set(avatarA, targetA);
+
+                Assert.That(reference.AvatarRelativePath, Is.EqualTo("Target"));
+                Assert.That(reference.Resolve(avatarA), Is.SameAs(targetA));
+                Assert.That(reference.Resolve(avatarB), Is.SameAs(targetB));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(avatarA);
+                UnityEngine.Object.DestroyImmediate(avatarB);
+            }
+        }
+
+        [Test]
+        public void ObjectReference_CanResolveAvatarRoot()
+        {
+            var avatar = new GameObject("Avatar");
+            try
+            {
+                var reference = new AnimatorCodeObjectReference();
+                reference.Set(avatar, avatar);
+
+                Assert.That(reference.IsConfigured, Is.True);
+                Assert.That(reference.AvatarRelativePath, Is.EqualTo(string.Empty));
+                Assert.That(reference.Resolve(avatar), Is.SameAs(avatar));
+
+                reference.Set(avatar, null);
+                Assert.That(reference.IsConfigured, Is.False);
+                Assert.That(reference.Resolve(avatar), Is.Null);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(avatar);
+            }
+        }
+
+        [Test]
+        public void ModuleSet_CreatesIndependentModuleInstancesPerCall()
+        {
+            var set = ScriptableObject.CreateInstance<AnimatorCodeModuleSet>();
+            try
+            {
+                var serialized = new SerializedObject(set);
+                var modules = serialized.FindProperty("modules");
+                modules.arraySize = 1;
+                modules.GetArrayElementAtIndex(0).managedReferenceValue = new TestConfiguredModule
+                {
+                    configuredValue = 42
+                };
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                var first = (TestConfiguredModule)set.CreateModuleInstances().Single();
+                var second = (TestConfiguredModule)set.CreateModuleInstances().Single();
+
+                Assert.That(second, Is.Not.SameAs(first));
+                Assert.That(first.configuredValue, Is.EqualTo(42));
+                Assert.That(second.configuredValue, Is.EqualTo(42));
+
+                first.transientValue = 99;
+                Assert.That(second.transientValue, Is.EqualTo(0));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(set);
+            }
         }
 
         private static void AddDefinition(SerializedProperty property, Type type, bool enabled)
@@ -109,6 +200,16 @@ namespace AnimatorCodePipeline.Tests
     public sealed class TestLastModule : AnimatorCodeModule
     {
         public override string Id => "test.last";
+        public override void Build(AnimatorCodeBuildContext context) { }
+    }
+
+    [Serializable]
+    public sealed class TestConfiguredModule : AnimatorCodeModule
+    {
+        public int configuredValue;
+        [NonSerialized] public int transientValue;
+
+        public override string Id => "test.configured";
         public override void Build(AnimatorCodeBuildContext context) { }
     }
 

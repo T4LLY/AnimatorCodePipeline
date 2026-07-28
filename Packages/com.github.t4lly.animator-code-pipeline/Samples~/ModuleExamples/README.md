@@ -9,8 +9,8 @@ Copy or import the sample, replace every `REPLACE/...` value, then add only the 
 These examples define generated Animator content only. Configure the avatar host separately:
 
 - Add `AnimatorCodePipelineSettings` to the feature host.
-- Add exactly one `ModularAvatarMergeAnimator` to the same host and assign its regular source `AnimatorController`.
-- Configure the Merge Animator playable layer, normally `FX`, and use `Absolute` path mode unless a verified relative path root is required.
+- Add exactly one `ModularAvatarMergeAnimator` to the same host and assign its regular `AnimatorController`.
+- Configure the Merge Animator playable layer, normally `FX`, and choose its Path Mode intentionally: `Absolute` uses the avatar root, while `Relative` uses the configured Relative Path Root (or the Merge Animator host when unset).
 - ACP does not use a local Unity `Animator`; the Merge Animator owns the controller configuration.
 - Register generated expression parameters with `ModularAvatarParameters` when the feature exposes parameters to the avatar.
 - Configure menu components separately or on the same host. They do not need to be separate GameObjects.

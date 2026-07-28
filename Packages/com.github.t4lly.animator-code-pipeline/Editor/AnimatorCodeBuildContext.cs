@@ -10,7 +10,7 @@ using UnityEngine;
 namespace AnimatorCodePipeline
 {
     /// <summary>
-    /// Shared build context for all modules in one avatar build.
+    /// Shared build context for all modules executed by one Settings component.
     /// A build-only clone of the configured Animator Controller receives all generated layers.
     /// </summary>
     public sealed class AnimatorCodeBuildContext
@@ -50,22 +50,22 @@ namespace AnimatorCodePipeline
             if (target == null) throw new ArgumentNullException(nameof(target));
             if (!target.IsChildOf(_bindingRoot))
                 throw new InvalidOperationException(
-                    "Animator Code Pipeline target is outside the active relative path root. " +
-                    "Use an Absolute MA Merge Animator path mode or move the target under the relative root.");
+                    "Animator Code Pipeline target is outside the active animation binding root. " +
+                    "Check the MA Merge Animator Path Mode and Relative Path Root for this feature.");
             return RelativePath(_bindingRoot, target);
         }
 
         /// <summary>
         /// Gets a generated layer in the build-only clone of the configured Animator Controller.
-        /// The source controller asset is never changed.
+        /// The authored controller asset referenced by the Merge Animator is never changed.
         /// </summary>
         public AacFlLayer Layer(string suffix)
         {
             return _layers.GetOrCreate(
                 suffix,
-                normalizedSuffix => Aac.CreateSupportingArbitraryControllerLayer(
+                exactSuffix => Aac.CreateSupportingArbitraryControllerLayer(
                     _workingController,
-                    normalizedSuffix));
+                    exactSuffix));
         }
 
         /// <summary>
@@ -108,11 +108,11 @@ namespace AnimatorCodePipeline
 
         internal bool HasGeneratedLayers => _layers.Count != 0;
 
-        internal void FinalizeMergeAnimators()
+        internal void FinalizeMergeAnimator()
         {
             if (_layers.Count == 0) return;
 
-            // MCP configures the MA Merge Animator. On the build clone, replace only its
+            // ACP configures the MA Merge Animator. On the build clone, replace only its
             // controller reference so the original scene component and controller remain untouched.
             var mergeAnimator = Settings.GetComponent<ModularAvatarMergeAnimator>();
             if (mergeAnimator == null)

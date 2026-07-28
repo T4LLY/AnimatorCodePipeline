@@ -1,7 +1,9 @@
 {
   "name": "AnimatorCodePipeline.Runtime",
   "rootNamespace": "AnimatorCodePipeline",
-  "references": [],
+  "references": [
+    "nadena.dev.modular-avatar.core"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,

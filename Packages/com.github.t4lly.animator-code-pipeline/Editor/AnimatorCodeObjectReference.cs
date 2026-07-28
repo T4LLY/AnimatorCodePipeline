@@ -4,33 +4,42 @@ using UnityEngine;
 namespace AnimatorCodePipeline
 {
     /// <summary>
-    /// Stores an editor-friendly object shortcut and an avatar-relative fallback path.
-    /// The path remains valid when the Module Set asset is used in another build context.
+    /// Stores an avatar-relative path for a user-configurable target.
+    /// Scene object references are intentionally not persisted because Module Sets are project assets.
     /// </summary>
     [Serializable]
     public sealed class AnimatorCodeObjectReference
     {
         [SerializeField]
-        private GameObject targetObject;
+        private bool configured;
 
-        [SerializeField, HideInInspector]
+        [SerializeField]
         private string avatarRelativePath;
+
+        public bool IsConfigured => configured;
+        public string AvatarRelativePath => configured ? avatarRelativePath : null;
 
         public GameObject Resolve(GameObject avatarRoot)
         {
             if (avatarRoot == null) throw new ArgumentNullException(nameof(avatarRoot));
-            if (targetObject != null && targetObject.transform.IsChildOf(avatarRoot.transform))
-                return targetObject;
-            if (string.IsNullOrWhiteSpace(avatarRelativePath)) return null;
+            if (!configured) return null;
+            if (string.IsNullOrEmpty(avatarRelativePath)) return avatarRoot;
             return avatarRoot.transform.Find(avatarRelativePath)?.gameObject;
         }
 
         public void Set(GameObject avatarRoot, GameObject target)
         {
             if (avatarRoot == null) throw new ArgumentNullException(nameof(avatarRoot));
-            if (target == null || !target.transform.IsChildOf(avatarRoot.transform))
+            if (target == null)
+            {
+                configured = false;
+                avatarRelativePath = string.Empty;
+                return;
+            }
+            if (!target.transform.IsChildOf(avatarRoot.transform))
                 throw new ArgumentException("The target must be inside the avatar root.", nameof(target));
-            targetObject = target;
+
+            configured = true;
             avatarRelativePath = RelativePath(avatarRoot.transform, target.transform);
         }
 

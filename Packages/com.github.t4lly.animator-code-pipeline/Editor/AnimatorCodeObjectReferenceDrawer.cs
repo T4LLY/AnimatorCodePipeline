@@ -1,4 +1,4 @@
-using nadena.dev.modular_avatar.core;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
@@ -10,11 +10,11 @@ namespace AnimatorCodePipeline
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            var targetObject = property.FindPropertyRelative("targetObject");
+            var configured = property.FindPropertyRelative("configured");
             var avatarRelativePath = property.FindPropertyRelative("avatarRelativePath");
-            var currentTarget = targetObject.objectReferenceValue as GameObject;
-            if (currentTarget == null && !string.IsNullOrWhiteSpace(avatarRelativePath.stringValue))
-                currentTarget = FindTargetByPath(avatarRelativePath.stringValue);
+            var currentTarget = configured.boolValue
+                ? FindUniqueTargetByPath(avatarRelativePath.stringValue)
+                : null;
 
             var selected = EditorGUI.ObjectField(
                 position,
@@ -26,34 +26,43 @@ namespace AnimatorCodePipeline
             if (selected == currentTarget)
                 return;
 
-            targetObject.objectReferenceValue = selected;
-            var avatar = selected == null
-                ? null
-                : selected.GetComponentInParent<VRCAvatarDescriptor>(true);
-            if (avatar == null)
+            if (selected == null)
             {
+                configured.boolValue = false;
                 avatarRelativePath.stringValue = string.Empty;
                 return;
             }
 
+            var avatar = selected.GetComponentInParent<VRCAvatarDescriptor>(true);
+            if (avatar == null)
+            {
+                configured.boolValue = false;
+                avatarRelativePath.stringValue = string.Empty;
+                return;
+            }
+
+            configured.boolValue = true;
             avatarRelativePath.stringValue = AnimatorCodeObjectReference.RelativePath(
                 avatar.transform,
                 selected.transform);
         }
 
-        private static GameObject FindTargetByPath(string path)
+        private static GameObject FindUniqueTargetByPath(string path)
         {
+            var matches = new List<GameObject>();
             foreach (var avatar in Resources.FindObjectsOfTypeAll<VRCAvatarDescriptor>())
             {
                 if (!avatar.gameObject.scene.IsValid())
                     continue;
 
-                var target = avatar.transform.Find(path);
+                var target = string.IsNullOrEmpty(path)
+                    ? avatar.gameObject
+                    : avatar.transform.Find(path)?.gameObject;
                 if (target != null)
-                    return target.gameObject;
+                    matches.Add(target);
             }
 
-            return null;
+            return matches.Count == 1 ? matches[0] : null;
         }
     }
 }

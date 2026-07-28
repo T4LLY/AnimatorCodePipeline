@@ -11,6 +11,7 @@
 !/LICENSE
 !/.github/
 !/.github/**
+!/CHANGELOG.md
 !/AnimatorCodePipeline.code-workspace
 !/package-json-samples-snippet.json
 

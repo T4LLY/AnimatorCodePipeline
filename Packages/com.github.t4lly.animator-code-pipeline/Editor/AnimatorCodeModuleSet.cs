@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 
 namespace AnimatorCodePipeline
@@ -14,9 +15,35 @@ namespace AnimatorCodePipeline
         [SerializeReference]
         private List<AnimatorCodeModule> modules = new List<AnimatorCodeModule>();
 
-        internal IReadOnlyList<AnimatorCodeModule> CreateModules()
+        internal int ValidateDefinitions()
         {
-            var selected = modules.Where(module => module != null && module.enabled).ToArray();
+            var selected = GetEnabledDefinitions();
+            ValidateSelectedDefinitions(selected);
+            return selected.Length;
+        }
+
+        internal IReadOnlyList<AnimatorCodeModule> CreateModuleInstances()
+        {
+            var selected = GetEnabledDefinitions();
+            ValidateSelectedDefinitions(selected);
+
+            return selected
+                .OrderBy(module => module.Order)
+                .ThenBy(module => module.Id, StringComparer.Ordinal)
+                .ThenBy(module => module.GetType().FullName, StringComparer.Ordinal)
+                .Select(CloneDefinition)
+                .ToArray();
+        }
+
+        private AnimatorCodeModule[] GetEnabledDefinitions()
+        {
+            return modules
+                .Where(module => module != null && module.enabled)
+                .ToArray();
+        }
+
+        private static void ValidateSelectedDefinitions(IReadOnlyList<AnimatorCodeModule> selected)
+        {
             foreach (var module in selected)
                 module.ValidateDefinition();
 
@@ -26,12 +53,24 @@ namespace AnimatorCodePipeline
             if (duplicate != null)
                 throw new InvalidOperationException(
                     $"Animator Code Pipeline found duplicate module Id '{duplicate.Key}'.");
+        }
 
-            return selected
-                .OrderBy(module => module.Order)
-                .ThenBy(module => module.Id, StringComparer.Ordinal)
-                .ThenBy(module => module.GetType().FullName, StringComparer.Ordinal)
-                .ToArray();
+        private static AnimatorCodeModule CloneDefinition(AnimatorCodeModule source)
+        {
+            AnimatorCodeModule clone;
+            try
+            {
+                clone = (AnimatorCodeModule)Activator.CreateInstance(source.GetType());
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException(
+                    $"Animator Code Pipeline module '{source.GetType().FullName}' must have a public parameterless constructor.",
+                    exception);
+            }
+
+            EditorUtility.CopySerializedManagedFieldsOnly(source, clone);
+            return clone;
         }
     }
 }

@@ -5,98 +5,71 @@ description: Build VRChat Animator features non-destructively as project-owned C
 
 # Animator Code Pipeline
 
-Use this skill to create, modify, review, and debug ACP modules.
+Use this skill to create, modify, review, and debug Animator Code Pipeline (ACP) modules.
 
-**Project-owned C# modules are the source of truth.**  
-Generated Animator Controllers, Animation Clips, Layers, States, Transitions, and Blend Trees are build outputs.
+**Project-owned C# modules and Module Set configuration are the source of truth.** Generated Animator Controllers, Animation Clips, Layers, States, Transitions, and Blend Trees are build outputs.
 
 ## 1. Hard Rules
 
 - Inspect the live Unity project before editing. Never guess hierarchy paths, component fields, enum values, serialized values, package versions, or APIs.
-- **Edit the source avatar. Do not create a persistent working avatar clone.**
-- **Do not use Modular Avatar Manual Bake for ACP implementation, inspection, or validation.**
-- Temporary build clones created internally by NDMF / MA are expected, but never edit them as project targets.
-- **Do not move, reparent, rename, or delete existing avatar GameObjects for ACP.**
-- Only add ACP / MA feature-host GameObjects when needed.
-- Do not directly modify the avatar's source Animator Controllers for ACP-managed behavior.
-- Do not directly rewrite source `VRCExpressionsMenu` or `VRCAvatarDescriptor` assets when Modular Avatar can represent the feature non-destructively.
-- Do not create another NDMF plugin for a normal feature. ACP owns NDMF integration.
-- Use `context.Layer(...)` for generated layers.
-- Use `RequireGameObject`, `RequireTransform`, or `RequireComponent<T>` for required targets.
+- Edit the source avatar. Do not create a persistent working avatar clone.
+- Do not use Modular Avatar Manual Bake for ACP implementation or validation.
+- Temporary NDMF / MA build clones are expected, but never edit them as project targets.
+- Do not move, reparent, rename, or delete existing avatar GameObjects merely to fit ACP.
+- Do not directly modify authored Animator Controller assets for ACP-generated behavior.
+- Do not directly rewrite authored `VRCExpressionsMenu`, Expression Parameters, or `VRCAvatarDescriptor` assets when Modular Avatar can represent the feature non-destructively.
+- Do not create another NDMF plugin for a normal ACP feature. ACP owns the NDMF lifecycle.
+- Use `context.Layer(...)` for ACP-generated Animator layers.
+- Use `RequireGameObject`, `RequireTransform`, `RequireComponent<T>`, or `AnimatorCodeObjectReference` for required targets.
 - Do not hide missing required targets with `IsApplicable` or silent returns.
-- Do not integrate third-party ACP modules or C# scripts without inspecting them first.
-- A successful file write or MCP mutation is not completion. Compile and validate the NDMF result.
+- A successful write or MCP mutation is not completion. Compile and validate the NDMF result.
 
 ### Never infer component semantics from serialization
 
-**Never infer Unity, Modular Avatar, VRChat SDK, or ACP behavior from raw serialized data.**
+Never infer Unity, Modular Avatar, VRChat SDK, or ACP behavior from raw serialized values.
 
-Do not guess the meaning of:
+Do not guess:
 
 - enum integers;
-- serialized field names;
 - flags / bit values;
-- default numeric values;
-- undocumented relationships between serialized properties.
+- serialized field meaning;
+- undocumented default numeric values;
+- relationships between component fields.
 
 For component configuration:
 
-1. inspect the installed component/API/type definition;
-2. prefer named enum/API values over raw integers;
-3. use Inspector state, installed package source, or Reflection when needed;
-4. make the change;
-5. read the live component back;
-6. verify the resulting named state.
+1. inspect the installed type / API / source or the named Inspector state;
+2. use named enum/API values;
+3. make the smallest required change;
+4. read the live component back;
+5. verify the resulting named state.
 
-Raw serialized values may be used only after their meaning has been confirmed against the installed package version.
-
-```text
-Inspect Unity
-  ↓
-Verify API / component semantics
-  ↓
-Plan the smallest change
-  ↓
-Create or modify Module
-  ↓
-Configure ACP / MA
-  ↓
-Read back configuration
-  ↓
-Compile
-  ↓
-Validate NDMF result
-  ↓
-Review changes
-```
+Installed package source and live Unity state are authoritative for version-specific behavior.
 
 ## 2. Inspect Unity First
 
-Use the installed Unity MCP implementation when available. Tool names vary by implementation; use capabilities rather than assuming exact tool names.
+Use the installed Unity MCP implementation when available. Tool names vary; use capabilities rather than assuming exact names.
 
 Inspect only what the feature requires:
 
 - active Unity project / instance;
 - avatar root and `VRCAvatarDescriptor`;
 - current Unity selection;
-- exact avatar-relative hierarchy paths for targets;
+- exact avatar-relative paths for required targets;
 - relevant Components, Renderers, Materials, Blend Shapes, and Parameters;
-- existing ACP Settings, ModuleSet, Modules, and local Animator;
-- existing `ModularAvatarMergeAnimator`;
-- existing MA Menu / Parameter components;
+- existing `AnimatorCodePipelineSettings`;
+- assigned `AnimatorCodeModuleSet` and existing module definitions;
+- same-host `ModularAvatarMergeAnimator`;
+- existing MA Parameters / Menu components;
 - Unity Console compile errors.
 
-If multiple candidates exist, do not guess.
-
-When the user has selected objects in Unity, prefer the live selection.
+If multiple candidates exist, do not guess. Prefer the live Unity selection when it resolves the ambiguity.
 
 ## 3. Feature Host Placement
 
-Place ACP beside the feature targets when they belong to one clear hierarchy group.
+ACP Settings and its MA Merge Animator belong on the same feature host.
 
-### Single target
-
-When creating a new host for one target, place the ACP host under the target's parent so the host is a sibling of the target.
+For one target, a sibling host under the target's parent is usually clear:
 
 ```text
 Parent
@@ -104,17 +77,7 @@ Parent
 └── ACP Feature Host
 ```
 
-Keep the target where it is.
-
-Reuse a suitable existing ACP host at that level when possible.
-
-Do not put the ACP host inside the target merely to avoid creating a sibling host.
-
-If the feature boundary makes sibling placement unclear, ask the user.
-
-### Multiple targets
-
-If multiple targets share the same parent and form one feature, create or reuse one ACP host under that common parent.
+For several targets that form one feature and share a parent:
 
 ```text
 Parent
@@ -124,116 +87,103 @@ Parent
 └── ACP Feature Host
 ```
 
-Do not create one ACP host per target when one common host represents the feature.
+Reuse a suitable existing host when possible. Do not create one ACP host per target when one feature host is enough.
 
-If the targets are in different branches, different outfit / feature roots, or do not have one clear common feature parent, **ask the user before choosing the host location.**
+Host placement does not itself define the animation binding root. Configure MAMA Path Mode and Relative Path Root explicitly for the intended target scope.
 
-Never move or reparent targets to manufacture a common parent.
+If targets are in unrelated branches and no clear feature boundary exists, ask before choosing the host. Never reparent targets just to create a convenient ACP hierarchy.
 
-### Host component grouping
+## 4. Required Host Configuration
 
-ACP Settings, the local ACP Animator, MA Merge Animator, MA Parameters, and MA Menu components may live on the same feature host.
-
-Do not split ACP and menu configuration into separate GameObjects without a concrete reason.
-
-## 4. Required ACP Host Configuration
-
-For the current ACP version, a normal feature host uses:
+Current ACP uses this normal host shape:
 
 ```text
 ACP Feature Host
 ├── AnimatorCodePipelineSettings
-├── Animator
 ├── ModularAvatarMergeAnimator
-├── ModularAvatarParameters      (when avatar parameter registration is needed)
+├── ModularAvatarParameters      (when expression parameter registration is needed)
 └── MA Menu components           (when menu controls are needed)
 ```
 
-The host `Animator` is an ACP-local Animator. It is **not** the avatar root Animator.
+`AnimatorCodePipelineSettings` requires a same-host `ModularAvatarMergeAnimator` and disallows multiple ACP Settings components on one GameObject.
 
-### Blank Controller relationship
+**ACP does not require a local Unity `Animator`.** There is no `targetAnimator` field and no ACP-specific blank-controller/local-Animator relationship.
 
-Create or use a dedicated project-owned blank regular `AnimatorController`.
+### Merge Animator is the source of truth
 
-Configure the references as follows:
+Do not duplicate these settings in ACP:
 
-```text
-AnimatorCodePipelineSettings.targetAnimator
-        ↓
-ACP host Animator
-        ↓
-Animator.runtimeAnimatorController
-        ┐
-        ├── same blank AnimatorController
-        │
-ModularAvatarMergeAnimator.animator
-        ┘
-```
+- Animator Controller;
+- VRChat playable layer;
+- Path Mode;
+- Relative Path Root;
+- Layer Priority;
+- other Merge Animator behavior that exists in the installed Modular Avatar version.
 
-Required rules:
+Do not assume optional/newer MA fields exist merely because they exist in recent MA releases. Inspect the installed package before using them.
 
-- `targetAnimator` points to the local Animator on the ACP feature host.
-- The local Animator uses the dedicated blank Animator Controller.
-- `ModularAvatarMergeAnimator.animator` references the **same blank Animator Controller**.
-- **Never set `targetAnimator` to the avatar root Animator.**
-- **Never use the avatar's existing FX / Gesture / Action controller as the ACP host's blank controller.**
-- Do not leave MA Merge Animator referencing the avatar's controller after fixing only `targetAnimator`.
+The same-host `ModularAvatarMergeAnimator` owns them.
 
-ACP clones the local blank controller during the NDMF build, generates AAC content into the working clone, and replaces the Merge Animator controller reference on the build clone with the generated controller.
+The controller must be a regular `AnimatorController` for the current ACP implementation. Do not use `AnimatorOverrideController` as ACP input.
 
-Do not modify the authored blank controller directly from a module.
+ACP clones the Merge Animator controller during the NDMF build, generates into the temporary clone, and assigns that clone only to the build-clone Merge Animator when generated Animator layers exist. The authored controller is not modified.
 
-### Attached Animator removal
+## 5. ACP Build Contract
 
-Because the current ACP host includes a local `Animator`, enable the Modular Avatar option whose installed-version meaning is **remove/delete the attached Animator after merge**.
-
-Do not identify this option by serialized numeric value. Verify the actual Inspector/API meaning in the installed MA version and read it back after setting it.
-
-## 5. ACP Contract
-
-ACP owns one central NDMF plugin and runs in `BuildPhase.Resolving`.
-
-Do not change the build phase for a normal feature.
+ACP owns one central NDMF plugin and runs in `BuildPhase.Resolving` before Modular Avatar.
 
 An avatar may contain multiple `AnimatorCodePipelineSettings`. Each Settings is an independent generation boundary.
 
-The current Settings boundary associates:
+Each enabled Settings associates:
 
-- `AnimatorCodeModuleSet`;
-- local ACP host Animator through `targetAnimator`;
-- blank source `AnimatorController`;
-- same-host `ModularAvatarMergeAnimator`;
-- temporary working controller created during build.
+- one `AnimatorCodeModuleSet`;
+- one same-host `ModularAvatarMergeAnimator`;
+- independent build-time module instances copied from the Module Set definitions;
+- one temporary cloned working controller when applicable modules run;
+- one generated-layer cache for that Settings.
 
-Use a regular `AnimatorController`. Do not use `AnimatorOverrideController`.
-
-Do not reimplement ACP controller lifecycle logic from a module.
+Conceptual lifecycle:
 
 ```text
-Validate Modules
+Validate Module Set definitions
+  ↓
+Create independent build-time Module instances
   ↓
 Sort by Order → Id → Fully Qualified Type Name
   ↓
-IsApplicable
+IsApplicable(...)
   ↓
-Clone blank Source Controller
+No applicable modules? → stop this Settings
   ↓
-Persist as NDMF temporary asset
+Read controller and path configuration from MAMA
+  ↓
+Clone MAMA Animator Controller
+  ↓
+Register temporary controller with NDMF
+  ↓
+Create AAC / AnimatorCodeBuildContext
   ↓
 Build Modules
   ↓
-Pass generated working controller to MA Merge Animator
+Generated Animator layers?
+  ├─ no  → no controller replacement required
+  └─ yes → assign working controller to build-clone MAMA
+  ↓
+Modular Avatar / NDMF performs final integration
 ```
 
-Never generate directly into the authored blank controller or the avatar's source controller.
+Do not recreate this lifecycle inside a module.
 
 ## 6. Module Contract
 
-Modules derive from `AnimatorCodeModule`.
+Modules derive from `AnimatorCodeModule` and are serialized as definitions inside `AnimatorCodeModuleSet`.
 
 ```csharp
+[Serializable]
 public sealed class ExampleModule : AnimatorCodeModule
 {
+    [SerializeField] private string parameterName = "ExampleEnabled";
+
     public override string Id => "project.example";
     public override int Order => 0;
 
@@ -244,276 +194,219 @@ public sealed class ExampleModule : AnimatorCodeModule
 
     public override void Build(AnimatorCodeBuildContext context)
     {
-        var target = context.RequireGameObject("Confirmed/Path");
+        var target = context.RequireGameObject("Confirmed/Avatar/Path");
         var layer = context.Layer("Example");
-
-        // AAC generation
+        var parameter = layer.BoolParameter(parameterName);
+        // AAC generation...
     }
 }
 ```
 
+Module fields may expose user-adjustable configuration in the Module Set Inspector. Prefer configuration fields over hard-coding values that users are expected to tune.
+
 ### `Id`
 
-- must not be empty;
-- must be unique within the same Settings execution;
+- must be non-empty;
+- must be unique among enabled definitions in the same Module Set;
 - should remain stable across ordinary refactors;
-- is not a Layer name.
+- is not an Animator layer name.
 
 ### `Order`
 
-Use only when execution order matters. ModuleSet Inspector list order does not define execution order.
+Lower values build first. Ties are resolved by `Id`, then fully qualified type name.
+
+`Order` is deterministic execution ordering, not a dependency graph. Use it only when generation sequence actually matters.
 
 ### `IsApplicable`
 
-Use only when the entire module is genuinely optional, and keep it side-effect free.
+Use only when the entire module is genuinely optional. Keep it side-effect free.
 
-Do not use it to hide a missing required target.
+Do not create controllers, clips, GameObjects, or MA components in `IsApplicable`.
 
-### Module validation
+Do not use it to hide missing required targets.
 
-Treat these as errors rather than silently skipping them:
+### Definition construction and validation
 
-- null / unresolved script;
-- type that is not an `AnimatorCodeModule`;
-- abstract / unbound generic type;
-- missing public parameterless constructor;
-- empty `Id`;
-- duplicate `Id`.
+Enabled definitions must:
 
-Do not create a custom NDMF `Plugin<T>` or `[assembly: ExportsPlugin]` from a module.
+- derive from `AnimatorCodeModule`;
+- be concrete and non-generic;
+- have a public parameterless constructor (an implicit default constructor is fine);
+- return a non-empty `Id`;
+- have a unique `Id` within the Module Set.
 
-## 7. Build Context and Layers
+ACP creates independent build-time copies of serialized definitions before module execution.
 
-Use the ACP context from normal modules:
+Do not create a custom NDMF `Plugin<T>` or `[assembly: ExportsPlugin]` from a normal module.
+
+## 7. Build Context
+
+Important API:
 
 ```text
+context.Settings
+context.AvatarRoot
+context.AvatarRootTransform
+context.BindingRoot
+context.Path(target)
 context.Layer(...)
 context.RequireGameObject(...)
 context.RequireTransform(...)
+context.RequireTransform(AnimatorCodeObjectReference)
 context.RequireComponent<T>(...)
 context.Aac
 context.ModularAvatar
 ```
 
-Do not call `context.Aac.NewAnimatorController()` from a normal module.
+### Required target lookup
 
-Use only target paths confirmed in Unity.
+String `Require*` paths are relative to the avatar root:
 
 ```csharp
 var sword = context.RequireGameObject("Armature/Hips/Spine/Chest/Sword");
 var body = context.RequireComponent<SkinnedMeshRenderer>("Body");
 ```
 
-Do not replace required targets with guessed `Transform.Find(...)` calls followed by silent returns.
+For user-adjustable target fields, prefer `AnimatorCodeObjectReference`:
 
-### Layer
+```csharp
+[SerializeField]
+private AnimatorCodeObjectReference target = new AnimatorCodeObjectReference();
+
+public override void Build(AnimatorCodeBuildContext context)
+{
+    var targetTransform = context.RequireTransform(target);
+}
+```
+
+Module Sets are project assets. `AnimatorCodeObjectReference` persists an avatar-relative path, not a Scene-object reference; the Inspector object picker is only a convenient way to choose that path.
+
+### Animation binding root
+
+`context.BindingRoot` follows the same-host Merge Animator:
+
+```text
+MAMA Path Mode = Absolute
+→ Avatar root
+
+MAMA Path Mode = Relative
+→ configured Relative Path Root when it resolves
+→ otherwise the MAMA host GameObject
+```
+
+Use `context.Path(target)` when raw binding-path text is needed. The target must be inside `BindingRoot`.
+
+Most AAC helpers can animate the target object directly because ACP passes the same root to `AacConfiguration.AnimatorRoot`.
+
+### Generated layers
 
 ```csharp
 var layer = context.Layer("FeatureName");
 ```
 
-The same raw suffix within one Settings shares the same generated layer.
+The exact suffix string is the cache identity. The same exact suffix inside one Settings returns the same generated layer.
 
-`.` is normalized to `_`.
-
-If different raw suffixes normalize to the same name, for example:
+ACP does **not** normalize `.` to `_`.
 
 ```text
 Face.Blink
 Face_Blink
 ```
 
-treat that as an explicit collision error.
+are distinct suffixes.
 
-`context.Layer(...)` does not select FX / Gesture / Action. The associated `ModularAvatarMergeAnimator` selects the destination playable layer.
+`context.Layer(...)` does not select FX / Gesture / Action. The same-host Merge Animator selects the destination playable layer.
 
-## 8. Samples and External APIs
+Do not call `context.Aac.NewAnimatorController()` for a normal ACP module; use the working controller provided by ACP through `context.Layer(...)`.
 
-When available, inspect ACP examples first:
+## 8. Animator As Code / MA API Verification
+
+Inspect bundled ACP examples first when relevant:
 
 ```text
 Packages/com.github.t4lly.animator-code-pipeline/Samples~/ModuleExamples
 ```
 
-Relative to the package root:
+For AAC or MA APIs not demonstrated by ACP:
 
-```text
-Samples~/ModuleExamples
-```
+1. inspect the installed package version/source or reliable version-matched documentation;
+2. verify exact method/type/enum names;
+3. implement only against APIs that actually exist in the project.
 
-Samples are implementation references. Adapt hierarchy paths, parameters, and version-specific assumptions to the live project.
-
-### Animator As Code (AAC)
-
-Before creating or modifying AAC code, check the relevant AAC API in Context7 when Context7 is available:
-
-```text
-/hai-vr/documentation
-```
-
-Read only the relevant sections.
-
-If Context7 is unavailable or unclear, inspect the installed AAC package / version / source.
-
-Do not invent AAC APIs from memory.
-
-### Modular Avatar (MA)
-
-When MA API, component fields, enum values, or behavior needs verification, use Context7 as needed:
-
-```text
-/bdunderscore/modular-avatar
-```
-
-For version-specific component behavior, the installed MA package/source and live component state are authoritative.
-
-### VRChat SDK / Creator Docs
-
-When VRChat standard components or parameter behavior needs verification, use Context7 as needed:
-
-```text
-/websites/creators_vrchat
-```
-
-Do not guess behavior for Contacts, PhysBones, Avatar Parameter Driver, built-in parameters, or similar features.
-
-If external documentation conflicts with the installed project, prefer the installed package and live Unity state.
+Do not invent APIs from memory and do not infer enum meaning from serialized integers.
 
 ## 9. Modular Avatar Merge Animator
 
-Inspect the existing Merge Animator before changing it.
+Inspect the existing MAMA before changing it.
 
 ### Playable Layer
 
-Do not infer the playable layer from a serialized enum integer.
+For ordinary expression-driven avatar features, FX is common, but do not force FX when the requested behavior or existing architecture requires Gesture, Action, Base, Additive, or another layer.
 
-For ordinary ACP-driven avatar feature behavior such as:
-
-- toggles;
-- Radial Puppet-controlled transforms;
-- Blend Shapes;
-- material / object state;
-- feature animation driven by expression parameters;
-
-the normal destination is **FX**.
-
-Use Gesture, Action, Base, Additive, or another layer only when the requested behavior and existing avatar architecture explicitly require it.
-
-After setting the layer, read the component again and verify the named playable layer.
+Always verify the named `layerType` in the installed API / Inspector.
 
 ### Path Mode
 
-For normal ACP feature hosts, set `ModularAvatarMergeAnimator` Path Mode to **Absolute**.
+Path Mode is a MAMA setting, not an ACP setting.
 
-ACP hosts are configuration hosts and are not automatically a valid relative binding root for the feature targets.
+Choose it based on binding scope:
 
-Do not use Relative merely because the host and targets exist somewhere inside the same avatar.
+- **Absolute**: bindings are based at the avatar root; appropriate when targets may be anywhere under the avatar.
+- **Relative**: bindings are based at the configured Relative Path Root; when that root is unset, MA uses the Merge Animator host as its path basis.
 
-Use Relative only when:
+Relative is useful for self-contained reusable feature hierarchies. Do not choose it merely because the feature host is nearby; all animated targets must fit the selected binding root.
 
-- the animation bindings are intentionally relative to the Merge Animator path basis;
-- all relevant targets fit that relative hierarchy;
-- the relationship has been explicitly verified from the live hierarchy.
+After editing MAMA, read the component back and verify the named Path Mode and Relative Path Root.
 
-After configuration, read the component again and confirm the named Path Mode is **Absolute**.
+### Attached Animator removal
 
-Do not infer `Relative` / `Absolute` from serialized integer values.
+ACP has no local-Animator requirement. Do not add an `Animator` merely for ACP, and do not treat MAMA's attached-Animator removal option as an ACP requirement.
 
-## 10. Modular Avatar Parameters and Menu
+If the host already has an Animator for some independent reason, evaluate that MAMA option according to the installed MA behavior and the user's architecture.
 
-Prefer Modular Avatar for non-destructive parameter and menu integration.
+## 10. Parameters and Menu
 
-Inspect existing MA components before adding new ones and avoid duplicate parameters/menu entries.
+Creating an Animator parameter does not by itself register it in VRChat Expression Parameters.
 
-### Avatar parameter registration
+When the feature exposes an avatar expression parameter, use Modular Avatar to register the required type/default/sync/save behavior.
 
-Creating an Animator parameter does **not** by itself register that parameter in the avatar's Expression Parameters.
+Inspect existing parameter and menu components first; do not create duplicate parameters or menu controls unnecessarily.
 
-When the feature needs an avatar expression parameter:
-
-1. create or reuse `ModularAvatarParameters`;
-2. register the parameter with the required type/default/sync/save configuration;
-3. verify the resulting MA component state;
-4. verify the parameter in the final NDMF-generated avatar configuration.
-
-Do not assume AAC Animator parameter creation replaces MA/VRChat Expression Parameter registration.
-
-### Menu Control Type
-
-Never infer Menu Item Control Type from a serialized integer.
-
-Verify the named Control Type through the installed MA enum/API, Inspector, source, or Reflection.
-
-After setting it, read the component again and verify the named state.
-
-### Radial Puppet
-
-For a Radial Puppet:
-
-- set the Menu Item Control Type to **Radial Puppet**;
-- place the parameter controlled by the radial input in the Radial Puppet's **control-specific SubParameter / radial parameter slot**;
-- do not put the radial-control parameter into the ordinary Menu Item activation/open `parameter` field merely because it is named `parameter`.
-
-Submenus and other Puppet controls can have separate activation/open parameters and control parameters.
-
-Do not assume their parameter fields have the same meaning as Radial Puppet.
-
-Prefer this verification order:
-
-```text
-ACP sample
-  ↓
-MA high-level API / Context7
-  ↓
-installed MA enum/type/source or Reflection
-  ↓
-live component read-back
-  ↓
-NDMF generated result
-```
+For Radial Puppet and other control types, verify the installed MA API / Inspector fields by name. Do not infer control type or parameter-slot meaning from serialized integers.
 
 ## 11. Validation
 
 After making changes:
 
-1. wait for Unity compilation;
-2. inspect and fix Console errors;
-3. verify ModuleSet registration;
-4. verify ACP host placement;
-5. verify `targetAnimator` points to the local ACP host Animator;
-6. verify the local Animator and MA Merge Animator reference the same dedicated blank controller;
-7. verify attached-Animator removal is enabled for the current host setup;
-8. verify Merge Animator playable layer by **name**;
-9. verify Path Mode is **Absolute** by **name** unless Relative was intentionally proven correct;
-10. verify MA Parameters when the feature needs avatar expression parameters;
-11. verify Menu Control Type and control-specific parameter fields;
-12. read modified components back rather than trusting serialized writes;
-13. run normal NDMF / avatar build validation;
-14. inspect generated Animator / parameter / menu output when possible;
-15. verify the requested behavior in Gesture Manager or another appropriate test environment.
+1. wait for Unity compilation and fix Console errors;
+2. verify the ACP Settings has the intended Module Set;
+3. verify the same-host MAMA exists;
+4. verify MAMA references a regular Animator Controller;
+5. verify playable layer by name;
+6. verify Path Mode and Relative Path Root by name;
+7. verify Module definitions/configuration and duplicate IDs;
+8. verify required target paths or `AnimatorCodeObjectReference` selections;
+9. verify MA Parameters / Menu configuration when used;
+10. read modified components back instead of trusting writes;
+11. run normal NDMF / avatar build validation;
+12. inspect generated Animator / parameter / menu output when possible;
+13. verify the requested behavior in Gesture Manager or another appropriate test environment.
 
-**Do not use Manual Bake for validation.**
-
-During compilation, domain reload, or MCP reconnection, re-check state before retrying mutations.
+Do not use Manual Bake for ACP validation.
 
 ## 12. Final Review
 
-Before completion, confirm that no changes outside the requested ACP / MA work were introduced.
+Treat these as unexpected unless the user explicitly requested them:
 
-Treat the following as unexpected:
-
-- modifications to existing source `.controller` / `.anim` assets;
-- unrelated Asset / Scene / Prefab changes;
-- package core / plugin changes;
-- a new NDMF plugin;
+- changes to authored `.controller` or `.anim` assets;
+- unrelated Scene / Prefab / Asset changes;
+- package-core edits when implementing only a project module;
+- a new per-feature NDMF plugin;
 - a persistent working avatar clone;
-- Manual Bake output.
+- Manual Bake output;
+- a local Animator added only to make ACP work.
 
-A newly created dedicated blank ACP controller is expected when the feature requires one.
-
-When Git is available, review the diff.
-
-Do not Commit, Push, or Publish unless the user explicitly requests it.
+Review the Git diff when Git is available. Do not Commit, Push, or Publish unless the user explicitly requests it.
 
 ## Completion Check
 
@@ -521,30 +414,21 @@ Do not Commit, Push, or Publish unless the user explicitly requests it.
 [ ] Edited the source avatar
 [ ] Did not create a persistent working avatar clone
 [ ] Did not use Manual Bake
-[ ] Did not move / reparent / rename / delete existing avatar objects
-[ ] Verified Unity selection / targets
-[ ] Did not guess hierarchy paths
+[ ] Did not move/reparent/rename/delete existing targets merely for ACP
+[ ] Verified Unity selection and exact targets
 [ ] Did not infer component semantics from serialized values
-[ ] Single target host is a sibling under the target's parent when appropriate
-[ ] Multiple same-parent targets share one sibling ACP host when appropriate
-[ ] Asked before choosing a host for targets with no clear common feature parent
-[ ] ACP / MA / Menu configuration was not unnecessarily split across GameObjects
-[ ] targetAnimator points to the local ACP host Animator
-[ ] Local Animator uses the dedicated blank Animator Controller
-[ ] MA Merge Animator uses the same blank Animator Controller
-[ ] Avatar root Animator / avatar FX controller is not used as ACP input
-[ ] Attached-Animator removal setting was verified and enabled
-[ ] Merge Animator playable layer was verified by name
-[ ] Normal ACP feature uses FX unless another layer was explicitly required
-[ ] Merge Animator Path Mode was verified by name
-[ ] Path Mode is Absolute unless Relative was intentionally proven correct
-[ ] Used context.Layer(...)
-[ ] Used Require* for required targets
-[ ] Verified relevant AAC API
-[ ] MA Parameters are registered when avatar parameters are required
-[ ] Menu Control Type was verified by name
-[ ] Radial Puppet uses its control-specific SubParameter / radial parameter slot
-[ ] Modified components were read back after setting
+[ ] ACP and MAMA are on the same feature host
+[ ] No local Animator / targetAnimator / blank-controller workaround was introduced
+[ ] Module Set is assigned and definitions are configured
+[ ] MAMA Animator Controller was verified
+[ ] MAMA playable layer was verified by name
+[ ] MAMA Path Mode / Relative Path Root were verified by name
+[ ] Used context.Layer(...) for generated layers
+[ ] Treated Layer suffixes as exact strings; no dot-to-underscore assumption
+[ ] Used Require* or AnimatorCodeObjectReference for required targets
+[ ] Verified relevant installed AAC / MA APIs
+[ ] MA Parameters are registered when expression parameters are required
+[ ] Modified component state was read back
 [ ] Unity compilation succeeded
 [ ] NDMF validation succeeded
 [ ] Requested behavior was verified

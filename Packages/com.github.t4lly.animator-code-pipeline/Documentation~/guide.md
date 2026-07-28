@@ -59,15 +59,16 @@ Avatar
 ```
 
 ### AnimatorCodePipelineSettings
-- **Animator Code Pipelineのメインコンポーネントです。**
+- **Animator Code Pipelineのメインコンポーネントです。** 同じGameObjectに`ModularAvatarMergeAnimator`を必要とします。
 - どのModuleを使うかを指定するためのコンポーネントです。
-- `AnimatorCodeModuleSet`を設定すると、その中に登録されたSerializeReference Module定義がビルド時に使用されます。
+- `AnimatorCodeModuleSet`を設定すると、その中に登録されたSerializeReference Module定義がビルド時に使用されます。各Settingsのビルドでは定義から独立したModuleインスタンスが作成されます。
 
 ### Modular Avatar Merge Animator
 - **Modular Avatarに付属するコンポーネントです。**
 - 生成されたAnimator Controllerを、FXやGestureなどのVRChat Playable Layerへ非破壊で統合するために使用します。
 - どのPlayable Layerへ統合するかは、Modular Avatar Merge Animator側で設定します。
 - ACPはMerge AnimatorのAnimatorをSource of Truthとして読み取り、ビルド中にcloneします。生成後のControllerはNDMFビルドクローン側だけに割り当てられます。
+- ACP専用のローカル`Animator`コンポーネントは必要ありません。
 - Controller、Playable Layer、Path Mode、Relative Path Root、Layer PriorityはMerge Animator側で設定します。
 
 ### Modular Avatar Parameters

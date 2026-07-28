@@ -1,7 +1,6 @@
 using System.IO;
 using UnityEditor;
 using UnityEngine;
-using VRC.SDK3.Avatars.Components;
 
 namespace AnimatorCodePipeline
 {
@@ -10,21 +9,16 @@ namespace AnimatorCodePipeline
         private const string ModuleFolder = "Assets/AnimatorCodePipeline/Editor";
         private const string AsmRefPath = ModuleFolder + "/AnimatorCodePipeline.Editor.asmref";
 
-        [MenuItem("Tools/Animator Code Pipeline/Add Settings to Selected Avatar")]
+        [MenuItem("Tools/Animator Code Pipeline/Add Settings to Selected GameObject")]
         private static void AddSettings()
         {
             var selected = Selection.activeGameObject;
             if (selected == null)
             {
-                Debug.LogError("Select the avatar root GameObject first.");
+                Debug.LogError("Select a GameObject first.");
                 return;
             }
 
-            if (selected.GetComponent<VRCAvatarDescriptor>() == null)
-            {
-                Debug.LogWarning("The selected GameObject does not have a VRCAvatarDescriptor. " +
-                                 "Animator Code Pipeline should normally be placed on the avatar root.");
-            }
 
             var existing = selected.GetComponent<AnimatorCodePipelineSettings>();
             if (existing != null)
@@ -52,7 +46,7 @@ namespace AnimatorCodePipeline
             Debug.Log($"Animator Code Pipeline module folder is ready: {ModuleFolder}");
         }
 
-        [MenuItem("Tools/Animator Code Pipeline/Log Discovered Modules")]
+        [MenuItem("Tools/Animator Code Pipeline/Log Configured Modules")]
         private static void LogModules()
         {
             var moduleSet = Selection.activeObject as AnimatorCodeModuleSet;
@@ -62,7 +56,7 @@ namespace AnimatorCodePipeline
                 return;
             }
 
-            var modules = moduleSet.CreateModules();
+            var modules = moduleSet.CreateModuleInstances();
             if (modules.Count == 0)
             {
                 Debug.Log("Animator Code Pipeline: the selected Module Set contains no modules.");

@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+- Preserve exact `Layer(suffix)` values; ACP no longer rewrites `.` to `_`.
+- Create independent build-time module instances from Module Set definitions for each Settings component.
+- Store `AnimatorCodeObjectReference` targets as avatar-relative paths instead of persistent Scene object references.
+- Bound generated-module registration retries and report compile/assembly-definition problems instead of polling indefinitely.
+- Synchronize public documentation with the MAMA source-of-truth, feature-host, path-root, and Module Set instance model.
+
 ## 0.2.0 - 2026-07-28
 
 ### Changed
@@ -7,6 +15,10 @@
 - ACP Settings now stores only a Module Set; Modular Avatar Merge Animator is the source of truth for controller and merge settings.
 - Module Sets now store enabled, serializable module definitions and user configuration directly.
 - Generated bindings use the Merge Animator path mode and relative path root.
+
+## Historical internal pre-release notes
+
+The 0.1.x entries below describe superseded private-beta designs and are retained only as development history. They are not part of the current API contract and require no migration support.
 
 ## 0.1.2 - 2026-07-27
 

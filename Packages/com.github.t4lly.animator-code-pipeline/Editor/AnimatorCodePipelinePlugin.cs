@@ -86,7 +86,7 @@ namespace AnimatorCodePipeline
                     $"Animator Code Pipeline on '{settings.name}' requires an MA Merge Animator on the same GameObject.");
             }
 
-            var modules = moduleSet.CreateModules();
+            var modules = moduleSet.CreateModuleInstances();
             if (modules.Count == 0) return;
 
             var applicableModules = GetApplicableModules(
@@ -96,7 +96,7 @@ namespace AnimatorCodePipeline
             if (applicableModules.Count == 0) return;
 
             var mergeAnimator = settings.GetComponent<ModularAvatarMergeAnimator>();
-            var bindingRoot = GetBindingRoot(ctx, settings, mergeAnimator);
+            var bindingRoot = GetBindingRoot(ctx, mergeAnimator);
             var generatedController = CreateWorkingController(settings);
             ctx.AssetSaver.SaveAsset(generatedController);
 
@@ -129,7 +129,7 @@ namespace AnimatorCodePipeline
             }
 
             if (buildContext.HasGeneratedLayers)
-                buildContext.FinalizeMergeAnimators();
+                buildContext.FinalizeMergeAnimator();
         }
 
         internal static IReadOnlyList<AnimatorCodeModule> GetApplicableModules(
@@ -184,14 +184,13 @@ namespace AnimatorCodePipeline
 
         internal static Transform GetBindingRoot(
             BuildContext context,
-            AnimatorCodePipelineSettings settings,
             ModularAvatarMergeAnimator mergeAnimator)
         {
             if (mergeAnimator.pathMode == MergeAnimatorPathMode.Absolute)
                 return context.AvatarRootTransform;
 
             var root = mergeAnimator.relativePathRoot.Get(context.AvatarRootTransform);
-            return root != null ? root.transform : settings.transform;
+            return root != null ? root.transform : mergeAnimator.transform;
         }
     }
 }

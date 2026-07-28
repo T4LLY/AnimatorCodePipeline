@@ -32,7 +32,7 @@ Commit the project-owned inputs required to reproduce the build, including:
 * `AnimatorCodeModuleSet` assets;
 * scenes or prefabs containing `AnimatorCodePipelineSettings`;
 * the associated Modular Avatar configuration;
-* project-authored source Animator Controller assets used by the Settings configuration;
+* project-authored Animator Controller assets referenced by Merge Animator components;
 * AnimationClips and other authored assets referenced by modules;
 * Unity `.meta` files associated with these assets.
 

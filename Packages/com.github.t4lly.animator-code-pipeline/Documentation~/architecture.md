@@ -40,11 +40,11 @@ It runs once for the avatar build in `BuildPhase.Resolving`, before Modular Avat
 
 For each enabled `AnimatorCodePipelineSettings` component, the plugin:
 
-1. loads the modules explicitly selected by its `AnimatorCodeModuleSet`;
-2. instantiates and validates those modules;
+1. loads the enabled module definitions explicitly configured by its `AnimatorCodeModuleSet`;
+2. validates those definitions and creates independent per-Settings module instances;
 3. evaluates `IsApplicable(...)`;
 4. skips controller generation when no modules are applicable;
-5. clones the configured source Animator Controller into a temporary working controller;
+5. clones the Animator Controller referenced by the same-host `ModularAvatarMergeAnimator` into a temporary working controller;
 6. persists that working controller as a temporary NDMF build asset;
 7. executes the applicable modules against a shared `AnimatorCodeBuildContext`;
 8. assigns the working controller to the Settings component's existing `ModularAvatarMergeAnimator` when generated Animator layers are present.
@@ -57,7 +57,7 @@ Each Settings component is processed independently.
 
 Multiple modules may intentionally share a generated layer by requesting the same suffix.
 
-Layer suffixes are normalized before being passed to Animator As Code. Distinct suffixes that normalize to the same generated layer name are treated as an error rather than being merged implicitly.
+Layer suffixes are passed to Animator As Code unchanged. Exact suffix reuse shares the same generated layer; distinct suffix strings remain distinct.
 
 `context.Layer(...)` does not select a VRChat playable layer.
 
@@ -75,7 +75,7 @@ Each Settings component associates:
 * exactly one same-host `ModularAvatarMergeAnimator`;
 * one temporary working controller created during the build.
 
-The Merge Animator is the source of truth for the regular source controller, playable
+The Merge Animator is the source of truth for the regular Animator Controller, playable
 layer, path mode, relative path root, and layer priority. `AnimatorOverrideController`
 assets are rejected.
 
@@ -91,7 +91,7 @@ After module generation, the temporary working controller is assigned only to th
 
 Modular Avatar then virtualizes and merges that controller through its normal NDMF pipeline.
 
-The authored scene component and source Animator Controller asset are not modified.
+The authored scene component and Animator Controller asset referenced by the Merge Animator are not modified.
 
 ## Execution model
 
