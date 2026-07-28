@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## 0.2.0 - 2026-07-28
 
 - Store module definitions and user-adjustable module configuration directly on `AnimatorCodePipelineSettings`; the required `AnimatorCodeModuleSet` asset layer has been removed.
 - Let the ACP Settings Inspector add, remove, configure, and generate modules in place.
@@ -9,11 +9,6 @@
 - Keep `AnimatorCodeObjectReference` targets as avatar-relative paths so build-time module copies resolve against the active avatar.
 - Bound generated-module registration retries and report compile/assembly-definition problems instead of polling indefinitely.
 - Synchronize public documentation with the MAMA source-of-truth, feature-host, path-root, and direct Settings module model.
-
-## 0.2.0 - 2026-07-28
-
-### Changed
-
 - ACP Settings now stores only a Module Set; Modular Avatar Merge Animator is the source of truth for controller and merge settings.
 - Module Sets now store enabled, serializable module definitions and user configuration directly.
 - Generated bindings use the Merge Animator path mode and relative path root.

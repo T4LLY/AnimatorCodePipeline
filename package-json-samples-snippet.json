@@ -1,9 +1,0 @@
-{
-  "samples": [
-    {
-      "displayName": "Module Examples",
-      "description": "Example Animator Code Pipeline modules covering blend trees, parameters, multi-layer coordination, conditions, and transform animation.",
-      "path": "Samples~/ModuleExamples"
-    }
-  ]
-}

@@ -12,7 +12,7 @@ Animator Code Pipelineは、VRChatアバターのAnimator機能をC#コードで
 ## 導入
 
 VCCまたは ALCOMから導入する場合は、
-### [>>>>>> Animator Code PipelineのVPMリポジトリを追加 <<<<<<]()
+### [VPMリポジトリを追加](https://t4lly.github.io/vpm-repos/)
 してパッケージをインストールしてください。
 
 このREADMEと詳細ドキュメントをAIに読ませながら進めることもできます。
